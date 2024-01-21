@@ -1,5 +1,7 @@
 from unique_id.unique_id import unique_id
 
+DATA_DIR = "/home/ec2-user/PrivateData/"
+
 class discordHelper:
     def __init__(self, client, server_id):
         self.server_id = server_id
@@ -57,7 +59,7 @@ class discordHelper:
             attachment = ctx.message.attachments[0]
             ctx.message.attachments = ctx.message.attachments[1:]
             filename = str(unique_id()) + '.png' 
-            await attachment.save(f"{IMAGES_DIR}{filename}")
+            await attachment.save(f"{DATA_DIR}images/{filename}")
             return filename
         else:
             return None

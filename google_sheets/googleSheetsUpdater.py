@@ -70,6 +70,12 @@ class google_sheet_updater:
         self.store_ws(sheet_name, get_as_dataframe(ws, evaluate_formulas=False, parse_dates=False))
         self.store_data()
 
+    def store_all_displays(self):
+        for file in os.listdir(f'{DATA_DIR}gsdata/'):
+            filename, extension = os.path.splitext(file)
+            if extension == '.csv':
+                self.store_display(filename)
+
     def update_display(self, sheet_name):
         # OPEN/CREATE SHEET & CSV 
         ws, df = self.get_ws(sheet_name)

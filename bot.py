@@ -778,6 +778,17 @@ async def gs_store_sheet(ctx: commands.Context, sheet_name: str) -> None:
     '''
     gs_helper.store_display(sheet_name)
 
+# gs_store_sheets
+@chain(client.command(), commands.check(is_me), wrapper_funcs)
+async def gs_store_sheets(ctx: commands.Context) -> None:
+    '''[Admin only] Stores all google sheets.
+
+    @param ctx (commands.Context): The context of the command.
+
+    @returns: None
+    '''
+    gs_helper.store_all_displays()
+
 # potd_rankings_overall
 # TO BE IMPLEMENTED, WILL GRANT USERS ACCESS TO OVERALL RANKINGS
 

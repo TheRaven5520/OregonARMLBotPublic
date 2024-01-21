@@ -1,0 +1,8 @@
+*/ProcFile
+*.env
+*/__pycache__/*
+__pycache__/*
+*.sh
+*.swp
+google_sheets/google_sheets_key.json
+.archive/*

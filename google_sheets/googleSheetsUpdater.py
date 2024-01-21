@@ -16,7 +16,7 @@ pd.set_option('display.max_colwidth', None)
 
 SHEET_NAME = "[Current] 2024 ARML Log (Responses)"
 rootDir = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/") + "/"
-DATA_DIR = f"~/PrivateData/gsdata/"
+DATA_DIR='/home/ec2-user/PrivateData/'
 
 def cs(n):
     string = ""

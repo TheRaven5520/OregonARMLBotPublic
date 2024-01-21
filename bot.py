@@ -37,8 +37,7 @@ def check_float(x):
 
 MAX_ROW_PUBLIC_LEADERBOARD = 20
 my_userid = 568622241902886934
-DATA_DIR = "~/PrivateData/data/"
-IMAGES_DIR = "~/PrivateData/images/"
+DATA_DIR = "/home/ec2-user/PrivateData/"
 
 driver, intents, client, helper = None, None, None, None
 

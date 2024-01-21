@@ -12,7 +12,7 @@ from unique_id.unique_id import unique_id
 import pytz 
 timezone = 'America/Los_Angeles'
 
-DATA_DIR = '~/PrivateData/data/'
+DATA_DIR = '/home/ec2-user/PrivateData/'
 
 class Person:
     def __init__(self, person_id, num_attempts=0, grade='0'):
@@ -225,7 +225,7 @@ class Season:
 
         result, text = self.grade_answer(last['problem_id'], last['person_id'], grade, attempts_to_update)
         if self.ungraded_answers[0]["filename"]:
-            os.remove(f"~/PrivateData/images/{self.ungraded_answers[0]['filename']}")
+            os.remove(f"{DATA_DIR}images/{self.ungraded_answers[0]['filename']}")
         self.ungraded_answers = self.ungraded_answers[1:]
         return result, text
 
@@ -263,23 +263,23 @@ class Driver:
         self.season.CURRENT_SEASON += val
 
     def store_data(self):
-        with open(f'{DATA_DIR}data.json', 'w') as file:
+        with open(f'{DATA_DIR}data/data.json', 'w') as file:
             json.dump(self.season.to_load(), file, indent=4)
 
-        with open(f'{DATA_DIR}ungraded.json', 'w') as file:
+        with open(f'{DATA_DIR}data/ungraded.json', 'w') as file:
             json.dump(self.season.ungraded_answers, file, indent=4)
 
-        with open(f'{DATA_DIR}scheduled_messages.json', 'w') as file:
+        with open(f'{DATA_DIR}data/scheduled_messages.json', 'w') as file:
             json.dump(self.scheduled_messages, file, indent=4)
 
     def load_data(self):
-        with open(f'{DATA_DIR}data.json', 'r') as file:
+        with open(f'{DATA_DIR}data/data.json', 'r') as file:
             self.season.from_load(json.load(file))
 
-        with open(f'{DATA_DIR}ungraded.json', 'r') as file:
+        with open(f'{DATA_DIR}data/ungraded.json', 'r') as file:
             self.season.ungraded_answers = json.load(file)
 
-        with open(f'{DATA_DIR}scheduled_messages.json', 'r') as file:
+        with open(f'{DATA_DIR}data/scheduled_messages.json', 'r') as file:
             self.scheduled_messages = json.load(file)
 
     

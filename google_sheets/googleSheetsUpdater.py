@@ -56,10 +56,10 @@ class google_sheet_updater:
     # DATA STORAGE 
 
     def load_data(self):
-        with open(f'{DATA_DIR}.json') as file:
+        with open(f'{DATA_DIR}data.json') as file:
             self.data = json.load(file)
     def store_data(self):
-        with open(f'{DATA_DIR}.json', 'w') as file:
+        with open(f'{DATA_DIR}data.json', 'w') as file:
             json.dump(self.data, file, indent=4)
     
     ############################################################################

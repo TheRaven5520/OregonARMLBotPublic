@@ -67,7 +67,7 @@ class google_sheet_updater:
 
     def store_display(self, sheet_name):
         ws, df = self.get_ws(sheet_name)
-        self.store_ws(sheet_name, get_as_dataframe(ws, evaluate_formulas=False, parse_dates=False))
+        self.store_ws(sheet_name, get_as_dataframe(ws, evaluate_formulas=False, parse_dates=False).fillna(""))
         self.store_data()
 
     def store_all_displays(self):

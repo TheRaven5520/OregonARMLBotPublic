@@ -41,25 +41,25 @@ class google_sheet_updater:
             ws = self.SHEET.worksheet(sheet_name)
         except:
             ws = None 
-        return ws, None if not os.path.exists(f"{DATA_DIR}data/{sheet_name}.csv") else pd.read_csv(f"{DATA_DIR}data/{sheet_name}.csv", dtype=str).fillna("")
+        return ws, None if not os.path.exists(f"{DATA_DIR}{sheet_name}.csv") else pd.read_csv(f"{DATA_DIR}{sheet_name}.csv", dtype=str).fillna("")
 
     def del_ws(self, sheet_name):
         ws, df = self.get_ws(sheet_name)
         if ws is not None: self.SHEET.del_worksheet(ws)
-        if not (df is None): os.remove(f"{DATA_DIR}data/{sheet_name}.csv")
+        if not (df is None): os.remove(f"{DATA_DIR}{sheet_name}.csv")
         return ws is not None or not (df is None)
 
     def store_ws(self, sheet_name, df):
-        df.astype(str).fillna("").to_csv(f"{DATA_DIR}data/{sheet_name}.csv", index=False)
+        df.astype(str).fillna("").to_csv(f"{DATA_DIR}{sheet_name}.csv", index=False)
 
     ############################################################################
     # DATA STORAGE 
 
     def load_data(self):
-        with open(f'{DATA_DIR}data/data.json') as file:
+        with open(f'{DATA_DIR}.json') as file:
             self.data = json.load(file)
     def store_data(self):
-        with open(f'{DATA_DIR}data/data.json', 'w') as file:
+        with open(f'{DATA_DIR}.json', 'w') as file:
             json.dump(self.data, file, indent=4)
     
     ############################################################################
@@ -93,7 +93,7 @@ class google_sheet_updater:
         self.data["names"] = names
         self.store_data()
 
-        for file in os.listdir(f'{DATA_DIR}data'):
+        for file in os.listdir(f'{DATA_DIR}'):
             filename, extension = os.path.splitext(file)
             if extension == '.csv':
                 self.update_display(filename)
@@ -155,7 +155,7 @@ class google_sheet_updater:
         df.loc[0, "RANKINGS"] = f"=SORT(A2:A, {total_score_column}2:{total_score_column}, FALSE)"
         df.loc[0, "SCORES"] = f"=SORT({total_score_column}2:{total_score_column}, {total_score_column}2:{total_score_column}, FALSE)"
 
-        with open(f"{DATA_DIR}data/{test_name}.csv", "w") as file:
+        with open(f"{DATA_DIR}{test_name}.csv", "w") as file:
             df.to_csv(file, index=False)
 
         # update sheet

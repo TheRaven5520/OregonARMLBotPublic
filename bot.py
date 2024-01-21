@@ -79,7 +79,7 @@ def is_administrator(ctx: commands.Context) -> bool:
 
 def wrapper_funcs(func):
     async def wrapped_func(ctx, *args, **kwargs):
-        with open(f"{DATA_DIR}log.txt", "a") as file:
+        with open(f"{DATA_DIR}data/log.txt", "a") as file:
             file.write(f"[{pd.Timestamp.now(tz=timezone)}] {ctx.author.id} -- {ctx.author.name} -- {ctx.author.display_name}: {func.__name__}({', '.join(map(str, args))}))" + "\n")
         value = await func(ctx, *args, **kwargs)
         store_data()
@@ -369,7 +369,7 @@ async def grade(ctx, grade, feedback = None, attempts_to_add = 1):
         return
     
     member = await client.fetch_user(int(last['person_id']))
-    file = discord.File(f"{IMAGES_DIR}{last['filename']}") if last["filename"] else None
+    file = discord.File(f"{IMAGES_DIR}images/{last['filename']}") if last["filename"] else None
 
     driver.season.grade_last(grade, int(attempts_to_add))
 
@@ -397,7 +397,7 @@ async def last(ctx, gnext = "False"):
     name = ctx.guild.get_member(int(last['person_id'])).name
     disc = ctx.guild.get_member(int(last['person_id'])).discriminator
     realname = ctx.guild.get_member(int(last['person_id'])).display_name
-    file = discord.File(f"{IMAGES_DIR}{last['filename']}") if last["filename"] else None
+    file = discord.File(f"{IMAGES_DIR}images/{last['filename']}") if last["filename"] else None
     await ctx.send(content=f"Problem Text: {problem.problem_text}\nProblem ID: {problem.id}\nAnswer Text: {last['answer']}\nPerson: {realname} -- {name}#{disc}", file=file)
 
 # Command to update the number of attempts for a person in a problem (only for administrators)
@@ -448,14 +448,14 @@ async def upd_grade(ctx, problem_id, person_name, new_grade, feedback=None):
 def load_data():
     global constants
     driver.load_data()
-    with open(f"{DATA_DIR}constants.json", "r") as file:
+    with open(f"{DATA_DIR}data/constants.json", "r") as file:
         constants = json.load(file)
     driver.season.CURRENT_SEASON = constants["CURRENT_SEASON"]
 def store_data():
     global constants
     driver.store_data()
     constants["CURRENT_SEASON"] = driver.season.CURRENT_SEASON
-    with open(f"{DATA_DIR}constants.json", "w") as file:
+    with open(f"{DATA_DIR}data/constants.json", "w") as file:
         json.dump(constants, file, indent=4)
 
 @chain(client.command(), commands.check(is_admin_channel))
@@ -519,7 +519,7 @@ async def listsched(ctx):
         return 
     for j, i in driver.scheduled_messages.items():
         file = None
-        if i['filename']: file = discord.File(f"{IMAGES_DIR}{i['filename']}")
+        if i['filename']: file = discord.File(f"{IMAGES_DIR}images/{i['filename']}")
         await ctx.send(dedent(f"""**ID: {j}**
                                   **Text**: {i['text']}
                                   **Time**: {i['time']}
@@ -535,7 +535,7 @@ async def remsched(ctx, smesid):
     
     if str(smesid) in driver.scheduled_messages:
         x = driver.scheduled_messages.pop(str(smesid))
-        if x["filename"]: os.remove(f"{IMAGES_DIR}{x['filename']}")
+        if x["filename"]: os.remove(f"{IMAGES_DIR}images/{x['filename']}")
         await ctx.send("Successfully removed scheduled message.")
     else:
         await ctx.send("Could not find scheduled message")
@@ -549,9 +549,9 @@ async def check_scheduled_messages():
         try:
             if not j["text"]: j["text"] = "​"
             channel = client.get_guild(constants["server_id"]).get_channel(int(j["channel"]))
-            file = discord.File(f"{IMAGES_DIR}{j['filename']}") if j["filename"] else None
+            file = discord.File(f"{IMAGES_DIR}images/{j['filename']}") if j["filename"] else None
             await channel.send(content=j["text"], file=file)
-            if j['filename']: os.remove(f"{IMAGES_DIR}{j['filename']}")
+            if j['filename']: os.remove(f"{IMAGES_DIR}images/{j['filename']}")
         except Exception as e:
             channel = helper.get_channel(constants["admin_channel"])
             await channel.send(f"Error sending scheduled message.")

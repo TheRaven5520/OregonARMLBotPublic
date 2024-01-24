@@ -32,6 +32,12 @@ def check_float(x):
     except:
         return False
 
+def log_error(e):
+    '''logs error e'''
+    current_directory = os.path.dirname(os.path.abspath(__file__))
+    with open(f"/home/ec2-user/PrivateData/error_log.txt", "a") as file:
+        file.write(f"[{pd.Timestamp.now(tz=timezone)}] {e}\n")
+
 ##################################################################################
 # SET UP DISCORD BOT, CONSTANTS, AND LOAD DATA
 
@@ -39,12 +45,11 @@ MAX_ROW_PUBLIC_LEADERBOARD = 20
 my_userid = 568622241902886934
 DATA_DIR = "/home/ec2-user/PrivateData/"
 
-driver, intents, client, helper = None, None, None, None
+driver, intents, client, helper, gs_helper = None, None, None, None, None
 
 driver = Driver()
 intents = discord.Intents.all()
 client = commands.Bot(command_prefix='-', intents=intents)
-gs_helper = google_sheet_updater()
 
 ##################################################################################
 # SECURITY & STORAGE
@@ -81,12 +86,18 @@ def wrapper_funcs(func):
     async def wrapped_func(ctx, *args, **kwargs):
         with open(f"{DATA_DIR}data/log.txt", "a") as file:
             file.write(f"[{pd.Timestamp.now(tz=timezone)}] {ctx.author.id} -- {ctx.author.name} -- {ctx.author.display_name}: {func.__name__}({', '.join(map(str, args))}))" + "\n")
-        value = await func(ctx, *args, **kwargs)
+        try:
+            value = await func(ctx, *args, **kwargs)
+            return value
+        except Exception as e:
+            log_error(f"Error in {func.__name__}({', '.join(map(str, args))}) -- {e}")
+            await ctx.send("Unknown error in command. Please contact the bot administrator.")
+            return None
         store_data()
-        return value 
     wrapped_func.__name__ = func.__name__
     wrapped_func.__doc__ = func.__doc__
     return wrapped_func
+
 
 ##################################################################################
 # POTD USER COMMANDS
@@ -288,14 +299,15 @@ async def newprob(ctx, answer="None", start_time=None, end_time=None, problem_te
     result, text, problem = driver.season.add_problem(problem_text, answer, start_time, end_time)
     
     driver.add_scheduled_message({
-        "text": dedent(f"""**{ctx.author.display_name}:** 
-                           {problem_text}
-                           **Season ID:** {driver.season.CURRENT_SEASON}
-                           **Problem ID:** {problem.id}
+        "text": dedent(f"""
+            **{ctx.author.display_name}:** 
+            {problem_text}
+            **Season ID:** {driver.season.CURRENT_SEASON}
+            **Problem ID:** {problem.id}
 
-                           Solutions accepted from **{pd.Timestamp(start_time, tz=timezone).strftime("%m/%d/%Y, %H:%M")}** till **{pd.Timestamp(end_time, tz=timezone).strftime("%m/%d/%Y, %H:%M")}**.
-                           
-                           Submit solutions using the command `-answer "Problem_ID" "ANSWER_TEXT"` Please DM your solutions to the bot. To attach an image, simply copy paste it onto your message."""),
+            Solutions accepted from **{pd.Timestamp(start_time, tz=timezone).strftime("%m/%d/%Y, %H:%M")}** till **{pd.Timestamp(end_time, tz=timezone).strftime("%m/%d/%Y, %H:%M")}**.
+            
+            Submit solutions using the command `-answer "Problem_ID" "ANSWER_TEXT"` Please DM your solutions to the bot. To attach an image, simply copy paste it onto your message."""),
         "filename": image_filename,
         "time": start_time,
         "channel": constants["potd_output_channel"]
@@ -343,6 +355,17 @@ async def upd_season(ctx, problem_id, season_id):
     result, text = driver.season.set_season(problem_id, season_id)
     await ctx.send(text)
 
+@chain(client.command(), commands.check(is_admin_channel), wrapper_funcs)
+async def newseason(ctx, val="1"):
+    '''[Admin only] Creates new season
+    
+    @param val (int): default 1, number of seasons to change by
+
+    @returns: None'''
+    val = int(val)
+    driver.create_season(val)
+    await ctx.send(f"Season created successfully. New season: {driver.season.CURRENT_SEASON}")
+
 ##################################################################################
 # POTD UPDATE USER DATA 
 
@@ -369,7 +392,7 @@ async def grade(ctx, grade, feedback = None, attempts_to_add = 1):
         return
     
     member = await client.fetch_user(int(last['person_id']))
-    file = discord.File(f"{IMAGES_DIR}images/{last['filename']}") if last["filename"] else None
+    file = discord.File(f"{DATA_DIR}images/{last['filename']}") if last["filename"] else None
 
     driver.season.grade_last(grade, int(attempts_to_add))
 
@@ -397,7 +420,7 @@ async def last(ctx, gnext = "False"):
     name = ctx.guild.get_member(int(last['person_id'])).name
     disc = ctx.guild.get_member(int(last['person_id'])).discriminator
     realname = ctx.guild.get_member(int(last['person_id'])).display_name
-    file = discord.File(f"{IMAGES_DIR}images/{last['filename']}") if last["filename"] else None
+    file = discord.File(f"{DATA_DIR}images/{last['filename']}") if last["filename"] else None
     await ctx.send(content=f"Problem Text: {problem.problem_text}\nProblem ID: {problem.id}\nAnswer Text: {last['answer']}\nPerson: {realname} -- {name}#{disc}", file=file)
 
 # Command to update the number of attempts for a person in a problem (only for administrators)
@@ -519,7 +542,7 @@ async def listsched(ctx):
         return 
     for j, i in driver.scheduled_messages.items():
         file = None
-        if i['filename']: file = discord.File(f"{IMAGES_DIR}images/{i['filename']}")
+        if i['filename']: file = discord.File(f"{DATA_DIR}images/{i['filename']}")
         await ctx.send(dedent(f"""**ID: {j}**
                                   **Text**: {i['text']}
                                   **Time**: {i['time']}
@@ -535,7 +558,7 @@ async def remsched(ctx, smesid):
     
     if str(smesid) in driver.scheduled_messages:
         x = driver.scheduled_messages.pop(str(smesid))
-        if x["filename"]: os.remove(f"{IMAGES_DIR}images/{x['filename']}")
+        if x["filename"]: os.remove(f"{DATA_DIR}images/{x['filename']}")
         await ctx.send("Successfully removed scheduled message.")
     else:
         await ctx.send("Could not find scheduled message")
@@ -549,9 +572,9 @@ async def check_scheduled_messages():
         try:
             if not j["text"]: j["text"] = "​"
             channel = client.get_guild(constants["server_id"]).get_channel(int(j["channel"]))
-            file = discord.File(f"{IMAGES_DIR}images/{j['filename']}") if j["filename"] else None
+            file = discord.File(f"{DATA_DIR}images/{j['filename']}") if j["filename"] else None
             await channel.send(content=j["text"], file=file)
-            if j['filename']: os.remove(f"{IMAGES_DIR}images/{j['filename']}")
+            if j['filename']: os.remove(f"{DATA_DIR}images/{j['filename']}")
         except Exception as e:
             channel = helper.get_channel(constants["admin_channel"])
             await channel.send(f"Error sending scheduled message.")
@@ -684,12 +707,8 @@ async def gs_update_role(ctx: commands.Context, role: str) -> None:
 
     @returns: None
     '''
-    try:
-        gs_helper.update_people([str(user.display_name) for user in helper.get_users([int(role[3:-1])])])
-        await ctx.send(f"Updated sheet's people to all with role.")
-    except Exception as e:
-        await ctx.send(e)
-
+    gs_helper.update_people([str(user.id) for user in helper.get_users([int(role[3:-1])])])
+    await ctx.send(f"Updated sheet's people to all with role.")
 
 @chain(client.command(), commands.check(is_me), wrapper_funcs)
 async def gs_update_people(ctx: commands.Context, people: str) -> None:
@@ -700,7 +719,8 @@ async def gs_update_people(ctx: commands.Context, people: str) -> None:
 
     @returns: None
     '''
-    gs_helper.update_people([helper.get_member(int(user[2:-1])).display_name for user in people.split(' ')])
+    gs_helper.update_people([user[2:-1] for user in people.split(' ')])
+    await ctx.send(f"Updated sheet's people.")
 
 # gs_create_sheet(sheet_name)
 @chain(client.command(), commands.check(is_me), wrapper_funcs)
@@ -713,6 +733,7 @@ async def gs_create_sheet(ctx: commands.Context, sheet_name: str) -> None:
     @returns: None
     '''
     gs_helper.update_display(sheet_name)
+    await ctx.send(f"Created sheet '{sheet_name}'.")
 
 # gs_create_test_sheet(sheet_name, num_problems)
 @chain(client.command(), commands.check(is_me), wrapper_funcs)
@@ -726,6 +747,7 @@ async def gs_create_test_sheet(ctx: commands.Context, sheet_name: str, num_probl
     @returns: None
     '''
     gs_helper.create_test_sheet(sheet_name, int(num_problems))
+    await ctx.send(f"Created test sheet '{sheet_name}' with {num_problems} problems.")
 
 # gs_add_column(sheet_name, column_name, *args) where *args is list of values 
 @chain(client.command(), commands.check(is_me), wrapper_funcs)
@@ -739,9 +761,10 @@ async def gs_add_column(ctx: commands.Context, sheet_name: str, column_name: str
     @returns: None
     '''
     gs_helper.add_column(sheet_name, column_name) 
+    await ctx.send(f"Added column '{column_name}' to sheet '{sheet_name}'.")
 
 # gs_add_potd_season()
-@chain(client.command(), commands.check(is_me), wrapper_funcs)
+@chain(client.command(), commands.check(is_administrator), wrapper_funcs)
 async def gs_add_potd_season(ctx: commands.Context, date: str = "None", season_id: str = "None", sheet_name: str = "POTD Sheet") -> None:
     '''[Admin only] Adds a new season to the google sheet.
 
@@ -751,8 +774,9 @@ async def gs_add_potd_season(ctx: commands.Context, date: str = "None", season_i
 
     @returns: None
     '''
-    if season_id == "None": season_id = str(driver.season.CURRENT_SEASON)
+    if season_id == "None": season_id = str(driver.season.CURRENT_SEASON - 1)
     gs_helper.add_potd_season(driver, helper, sheet_name, season_id, date)
+    await ctx.send(f"Added season {season_id} to sheet '{sheet_name}'.")
 
 # gs_del_sheet
 @chain(client.command(), commands.check(is_me), wrapper_funcs)
@@ -765,6 +789,7 @@ async def gs_del_sheet(ctx: commands.Context, sheet_name: str) -> None:
     @returns: None
     '''
     gs_helper.del_ws(sheet_name)
+    await ctx.send(f"Deleted sheet '{sheet_name}'.")
 
 # gs_store_sheet
 @chain(client.command(), commands.check(is_me), wrapper_funcs)
@@ -777,6 +802,7 @@ async def gs_store_sheet(ctx: commands.Context, sheet_name: str) -> None:
     @returns: None
     '''
     gs_helper.store_display(sheet_name)
+    await ctx.send(f"Stored sheet '{sheet_name}'.")
 
 # gs_store_sheets
 @chain(client.command(), commands.check(is_me), wrapper_funcs)
@@ -788,9 +814,49 @@ async def gs_store_sheets(ctx: commands.Context) -> None:
     @returns: None
     '''
     gs_helper.store_all_displays()
+    await ctx.send(f"Stored all sheets.")
 
 # potd_rankings_overall
-# TO BE IMPLEMENTED, WILL GRANT USERS ACCESS TO OVERALL RANKINGS
+@chain(client.command(), wrapper_funcs)
+async def potd_rankings_overall(ctx: commands.Context) -> None:
+    '''[Admin only] Updates the overall rankings.
+
+    @param ctx (commands.Context): The context of the command.
+    @param sheet_name (str): The name of the sheet to update.
+
+    @returns: None
+    '''
+    _, df = gs_helper.get_ws('POTD Sheet')
+
+    users = {str(user.id): user.display_name for user in helper.guild().members}
+    for i in range(len(df['Name'])):
+        if df.loc[i, 'Name'] in users:
+            df.loc[i, 'Name'] = users[df.loc[i, 'Name']]
+
+    df.drop(df[df['Name'].isin(['Shreyan Paliwal', 'Anay Aggarwal', 'Ekansh Mittal'])].index, inplace=True)
+
+    df['Num Weeks'] = df.apply(lambda row: len([i for i in row[1:] if i != '']) - 1, axis=1)
+    df.drop(df[df['Num Weeks'] <= 0].index, inplace=True)
+    df['Num Points'] = df.apply(lambda row: sum([float(i) for i in row[1:-1] if i != '']) - min([float(i) for i in row[1:-1] if i != '']), axis=1)
+
+    df['Score'] = df.apply(lambda row: row['Num Points'] / row['Num Weeks'] if row['Num Weeks'] != 0 else 0, axis=1)
+    df['Rank'] = df['Score'].rank(method='min', ascending=False).astype(int)
+    df = df[['Rank', 'Name', 'Score']].sort_values('Rank', ascending=True)
+
+    await ctx.send("```" + df.to_string(index=False) + "```")
+
+# Refresh sheet display
+@chain(client.command(), commands.check(is_me), wrapper_funcs)
+async def gs_refresh(ctx: commands.Context, sheet_name: str) -> None:
+    '''[Admin only] Refreshes the google sheet display.
+
+    @param ctx (commands.Context): The context of the command.
+    @param sheet_name (str): The name of the sheet to refresh.
+
+    @returns: None
+    '''
+    gs_helper.update_display(sheet_name)
+    await ctx.send(f"Refreshed sheet '{sheet_name}'.")
 
 ##################################################################################
 # RUN BOT
@@ -818,6 +884,7 @@ async def change_status():
   await client.change_presence(activity=discord.Game(next(status)))
 
 helper = discordHelper(client, constants["server_id"])
+gs_helper = google_sheet_updater(helper)
 
 client.run(TOKEN)
 

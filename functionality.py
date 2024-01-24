@@ -152,9 +152,9 @@ class Season:
         return True, f"Problem added successfully", problem
 
     def delete_problem(self, problem_id: str):
-        res = self.problems.pop(self.get_problem(problem_id), None)
+        res = self.problems.pop(problem_id, None)
         res = (res == None)
-        text = f"Problem {problem_id} " + ("deleted." if res else "not found.")
+        text = f"Problem {problem_id} " + ("not found." if res else "deleted.")
         return res, text
 
     def add_answer(self, problem_id: str, person_id: str, answer: str, filename: str = None):
@@ -230,6 +230,7 @@ class Season:
         return result, text
 
     ################ LOAD
+
     
     def to_load(self):
         return [problem.to_load() for problem_id, problem in self.problems.items()]

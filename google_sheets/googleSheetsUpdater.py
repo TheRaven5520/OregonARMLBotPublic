@@ -26,21 +26,25 @@ def cs(n):
     return string
 
 class google_sheet_updater:
-    def __init__(self):
+    def __init__(self, helper):
         self.client = gspread.authorize(ServiceAccountCredentials.from_json_keyfile_name(f'{rootDir}google_sheets_key.json',[ 'https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/drive.file' ]))
 
         self.SHEET = self.client.open(SHEET_NAME)
+        self.helper = helper
 
         self.load_data()
 
     ############################################################################
     # HELPERS 
 
-    def get_ws(self, sheet_name):
-        try:
-            ws = self.SHEET.worksheet(sheet_name)
-        except:
-            ws = None 
+    def get_ws(self, sheet_name, ws = True):
+        if ws:
+            try:
+                ws = self.SHEET.worksheet(sheet_name)
+            except:
+                ws = None
+        else:
+            ws = None
         return ws, None if not os.path.exists(f"{DATA_DIR}gsdata/{sheet_name}.csv") else pd.read_csv(f"{DATA_DIR}gsdata/{sheet_name}.csv", dtype=str).fillna("")
 
     def del_ws(self, sheet_name):
@@ -67,7 +71,12 @@ class google_sheet_updater:
 
     def store_display(self, sheet_name):
         ws, df = self.get_ws(sheet_name)
-        self.store_ws(sheet_name, get_as_dataframe(ws, evaluate_formulas=False, parse_dates=False).fillna(""))
+        new_df = get_as_dataframe(ws, evaluate_formulas=False, parse_dates=False).fillna("")
+        users = {user.display_name: user.id for user in self.helper.guild().members}
+        for i in range(len(new_df["Name"])):
+            if new_df.loc[i, "Name"] in users:
+                new_df.loc[i, "Name"] = users[new_df.loc[i, "Name"]]
+        self.store_ws(sheet_name, new_df)
         self.store_data()
 
     def store_all_displays(self):
@@ -86,8 +95,18 @@ class google_sheet_updater:
         for name in self.data["names"]:
             if name not in df["Name"].values:
                 df = pd.concat([df, pd.DataFrame({"Name": [name]})], ignore_index=True)
-        df_names = df[df["Name"].isin(self.data["names"])].fillna("").sort_values(by=["Name"]).reset_index(drop=True)
 
+        df_names = df[df["Name"].isin(self.data["names"])].fillna("")
+
+        for i in range(len(df_names["Name"])):
+            try:
+                member = self.helper.get_member(int(df_names.loc[i, "Name"]))
+                df_names.loc[i, "Name"] = member.display_name
+            except:
+                continue 
+
+        df_names = df_names.sort_values(by=["Name"]).reset_index(drop=True)
+        
         # UPDATE DISPLAY
         ws.resize(cols=len(df_names.columns), rows=len(df_names.index) + 1)
         ws.update(values=[df_names.columns.values.tolist()] + df_names.values.tolist(), range_name=None, value_input_option='USER_ENTERED')
@@ -119,8 +138,7 @@ class google_sheet_updater:
     def add_potd_season(self, driver, helper, sheet_name, season = "None", date = "None"):
         if date == "None":
             date = (pd.Timestamp.today() - pd.Timedelta(days=pd.Timestamp.today().dayofweek + 7)).strftime("%m/%d/%Y")
-        if season == "None": season = str(driver.season.CURRENT_SEASON)
-
+        if season == "None": season = str(driver.season.CURRENT_SEASON - 1)
 
         ws, df = self.get_ws(sheet_name)
         if df is None: return None
@@ -128,12 +146,9 @@ class google_sheet_updater:
         self.add_column(sheet_name, f"{season}: {date}", False) 
 
         users = {user.display_name: str(user.id) for user in helper.guild().members}
-        scores = driver.season.get_grades(str(driver.season.CURRENT_SEASON))
+        scores = driver.season.get_grades(season)
         for i in range(len(df["Name"])):
-            if df.loc[i, "Name"] in users and users[df.loc[i, "Name"]] in scores:
-                score = scores[users[df.loc[i, "Name"]]]
-            else:
-                score = "0"
+            score = scores[df.loc[i, "Name"]] if df.loc[i, "Name"] in scores else "0"
             df.loc[i, f"{season}: {date}"] = str(score)
 
         self.store_ws(sheet_name, df)

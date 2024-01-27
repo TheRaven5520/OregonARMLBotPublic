@@ -543,10 +543,11 @@ async def listsched(ctx):
     for j, i in driver.scheduled_messages.items():
         file = None
         if i['filename']: file = discord.File(f"{DATA_DIR}images/{i['filename']}")
-        await ctx.send(dedent(f"""**ID: {j}**
-                                  **Text**: {i['text']}
-                                  **Time**: {i['time']}
-                                  **Channel**: <#{i['channel']}>"""), file=file)
+        await ctx.send(dedent(f"""
+                **ID: {j}**
+                **Text**: {i['text']}
+                **Time**: {i['time']}
+                **Channel**: <#{i['channel']}>"""), file=file)
 
 @chain(client.command(), commands.check(is_admin_channel), wrapper_funcs)
 async def remsched(ctx, smesid):
@@ -578,7 +579,7 @@ async def check_scheduled_messages():
         except Exception as e:
             channel = helper.get_channel(constants["admin_channel"])
             await channel.send(f"Error sending scheduled message.")
-            print(e)
+            raise Exception(e)
         driver.scheduled_messages.pop(i)
     store_data()
     

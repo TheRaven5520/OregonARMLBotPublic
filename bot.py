@@ -17,6 +17,7 @@ status = cycle(['Oregon ARML POTDs', 'Oregon ARML POTDs.'])
 from discord.ext import tasks
 
 from textwrap import dedent 
+import traceback
 
 def chain(*decs):
     def deco(f): 
@@ -32,11 +33,11 @@ def check_float(x):
     except:
         return False
 
-def log_error(e):
+def log_error(e, act = True):
     '''logs error e'''
-    current_directory = os.path.dirname(os.path.abspath(__file__))
     with open(f"/home/ec2-user/PrivateData/error_log.txt", "a") as file:
         file.write(f"[{pd.Timestamp.now(tz=timezone)}] {e}\n")
+        if act: traceback.print_exc(file=file)
 
 ##################################################################################
 # SET UP DISCORD BOT, CONSTANTS, AND LOAD DATA

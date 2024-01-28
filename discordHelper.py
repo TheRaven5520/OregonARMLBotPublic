@@ -21,7 +21,8 @@ class discordHelper:
     def get_member(self, member_id):
         member = self.guild().get_member(member_id)
         if member is None:
-            raise Exception("Member not found")
+            print(f"Member {member_id} not found")
+            raise Exception(f"Member {member_id} not found")
         return member
 
     async def get_post(self, post_id, channel_id = None):

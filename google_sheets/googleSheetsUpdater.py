@@ -3,10 +3,18 @@ from gspread_dataframe import get_as_dataframe
 from oauth2client.service_account import ServiceAccountCredentials
 import json
 import pandas as pd
+import traceback
 
 import os 
 import warnings
 warnings.filterwarnings("ignore")
+
+
+def log_error(e, act=True):
+    '''logs error e'''
+    with open(f"/home/ec2-user/PrivateData/error_log.txt", "a") as file:
+        file.write(f"[{pd.Timestamp.now(tz='America/Los_Angeles')}] {e}\n")
+        if act: traceback.print_exc(file=file)
 
 # set all maxes for df display to None 
 pd.set_option('display.max_rows', None)
@@ -96,13 +104,14 @@ class google_sheet_updater:
             if name not in df["Name"].values:
                 df = pd.concat([df, pd.DataFrame({"Name": [name]})], ignore_index=True)
 
-        df_names = df[df["Name"].isin(self.data["names"])].fillna("")
+        df_names = df[df["Name"].isin(self.data["names"])].fillna("").reset_index(drop=True)
 
         for i in range(len(df_names["Name"])):
             try:
                 member = self.helper.get_member(int(df_names.loc[i, "Name"]))
                 df_names.loc[i, "Name"] = member.display_name
-            except:
+            except Exception as e:
+                log_error(e)
                 continue 
 
         df_names = df_names.sort_values(by=["Name"]).reset_index(drop=True)

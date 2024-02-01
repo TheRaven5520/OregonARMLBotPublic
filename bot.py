@@ -820,7 +820,7 @@ async def gs_store_sheets(ctx: commands.Context) -> None:
 
 # potd_rankings_overall
 @chain(client.command(), wrapper_funcs)
-async def potd_rankings_overall(ctx: commands.Context) -> None:
+async def potd_rankings_overall(ctx: commands.Context, sorted: str = "False") -> None:
     '''[Admin only] Updates the overall rankings.
 
     @param ctx (commands.Context): The context of the command.
@@ -828,6 +828,8 @@ async def potd_rankings_overall(ctx: commands.Context) -> None:
 
     @returns: None
     '''
+    sorted = sorted[0].lower() in ['t', 'y']
+
     _, df = gs_helper.get_ws('POTD Sheet')
 
     users = {str(user.id): user.display_name for user in helper.guild().members}
@@ -844,6 +846,8 @@ async def potd_rankings_overall(ctx: commands.Context) -> None:
     df['Score'] = df.apply(lambda row: row['Num Points'] / row['Num Weeks'] if row['Num Weeks'] != 0 else 0, axis=1)
     df['Rank'] = df['Score'].rank(method='min', ascending=False).astype(int)
     df = df[['Rank', 'Name', 'Score']].sort_values('Rank', ascending=True)
+
+    if sorted: df = df.sort_values('Name', ascending=True)[['Score']]
 
     await ctx.send("```" + df.to_string(index=False) + "```")
 

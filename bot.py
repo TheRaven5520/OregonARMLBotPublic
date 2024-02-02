@@ -820,7 +820,7 @@ async def gs_store_sheets(ctx: commands.Context) -> None:
 
 # potd_rankings_overall
 @chain(client.command(), wrapper_funcs)
-async def potd_rankings_overall(ctx: commands.Context, sorted: str = "False") -> None:
+async def potd_rankings_overall(ctx: commands.Context, sorted = "False") -> None:
     '''[Admin only] Updates the overall rankings.
 
     @param ctx (commands.Context): The context of the command.
@@ -837,17 +837,27 @@ async def potd_rankings_overall(ctx: commands.Context, sorted: str = "False") ->
         if df.loc[i, 'Name'] in users:
             df.loc[i, 'Name'] = users[df.loc[i, 'Name']]
 
-    df.drop(df[df['Name'].isin(['Shreyan Paliwal', 'Anay Aggarwal', 'Ekansh Mittal'])].index, inplace=True)
+    if not sorted: df.drop(df[df['Name'].isin(['Shreyan Paliwal', 'Anay Aggarwal', 'Ekansh Mittal'])].index, inplace=True)
 
     df['Num Weeks'] = df.apply(lambda row: len([i for i in row[1:] if i != '']) - 1, axis=1)
     df.drop(df[df['Num Weeks'] <= 0].index, inplace=True)
     df['Num Points'] = df.apply(lambda row: sum([float(i) for i in row[1:-1] if i != '']) - min([float(i) for i in row[1:-1] if i != '']), axis=1)
+    log_error(df, False)
+
 
     df['Score'] = df.apply(lambda row: row['Num Points'] / row['Num Weeks'] if row['Num Weeks'] != 0 else 0, axis=1)
+    df = df[['Name', 'Score']].reset_index(drop=True)
+    log_error(df, False)
+    members_with_role = [str(member.display_name) for member in helper.guild().members if constants["year_role"] in [role.id for role in member.roles]]
+    for member in members_with_role:
+        if member not in df['Name'].values:
+            df.loc[len(df.index)] = [member, 0]
+    log_error(df, False)
     df['Rank'] = df['Score'].rank(method='min', ascending=False).astype(int)
     df = df[['Rank', 'Name', 'Score']].sort_values('Rank', ascending=True)
 
-    if sorted: df = df.sort_values('Name', ascending=True)[['Score']]
+    if sorted:
+        df = df.sort_values('Name', ascending=True)[['Score']]
 
     await ctx.send("```" + df.to_string(index=False) + "```")
 

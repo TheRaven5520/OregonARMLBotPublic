@@ -53,7 +53,7 @@ class google_sheet_updater:
                 ws = None
         else:
             ws = None
-        return ws, None if not os.path.exists(f"{DATA_DIR}gsdata/{sheet_name}.csv") else pd.read_csv(f"{DATA_DIR}gsdata/{sheet_name}.csv", dtype=str).fillna("")
+        return ws, None if not os.path.exists(f"{DATA_DIR}gsdata/{sheet_name}.csv") else pd.read_csv(f"{DATA_DIR}gsdata/{sheet_name}.csv", dtype=str).fillna("").reset_index(drop=True)
 
     def del_ws(self, sheet_name):
         ws, df = self.get_ws(sheet_name)
@@ -62,7 +62,7 @@ class google_sheet_updater:
         return ws is not None or not (df is None)
 
     def store_ws(self, sheet_name, df):
-        df.astype(str).fillna("").to_csv(f"{DATA_DIR}gsdata/{sheet_name}.csv", index=False)
+        df.astype(str).fillna("").reset_index(drop=True).to_csv(f"{DATA_DIR}gsdata/{sheet_name}.csv", index=False)
 
     ############################################################################
     # DATA STORAGE 
@@ -80,12 +80,27 @@ class google_sheet_updater:
     def store_display(self, sheet_name):
         ws, df = self.get_ws(sheet_name)
         new_df = get_as_dataframe(ws, evaluate_formulas=False, parse_dates=False).fillna("")
-        users = {user.display_name: user.id for user in self.helper.guild().members}
+
+        users = {user.display_name: str(user.id) for user in self.helper.guild().members}
         for i in range(len(new_df["Name"])):
             if new_df.loc[i, "Name"] in users:
                 new_df.loc[i, "Name"] = users[new_df.loc[i, "Name"]]
-        self.store_ws(sheet_name, new_df)
+
+        for col in new_df.columns:
+            if col not in df.columns:
+                df[col] = ""
+        df = df[new_df.columns]
+
+        for i in range(len(new_df["Name"])):
+            name = new_df.loc[i, "Name"]
+            if name in df["Name"].values:
+                df.loc[df['Name'] == 'name'] = new_df.loc[new_df['Name'] == 'name'].values
+            else:
+                df = pd.concat([df, new_df.loc[i:i]], ignore_index=True)
+
+        self.store_ws(sheet_name, df)
         self.store_data()
+
 
     def store_all_displays(self):
         for file in os.listdir(f'{DATA_DIR}gsdata/'):
@@ -104,6 +119,7 @@ class google_sheet_updater:
             if name not in df["Name"].values:
                 df = pd.concat([df, pd.DataFrame({"Name": [name]})], ignore_index=True)
 
+
         df_names = df[df["Name"].isin(self.data["names"])].fillna("").reset_index(drop=True)
 
         for i in range(len(df_names["Name"])):
@@ -111,8 +127,7 @@ class google_sheet_updater:
                 member = self.helper.get_member(int(df_names.loc[i, "Name"]))
                 df_names.loc[i, "Name"] = member.display_name
             except Exception as e:
-                log_error(e)
-                continue 
+                continue
 
         df_names = df_names.sort_values(by=["Name"]).reset_index(drop=True)
         

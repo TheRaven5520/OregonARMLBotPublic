@@ -118,6 +118,7 @@ class google_sheet_updater:
         for name in self.data["names"]:
             if name not in df["Name"].values:
                 df = pd.concat([df, pd.DataFrame({"Name": [name]})], ignore_index=True)
+        df = df.reset_index(drop=True)
 
 
         df_names = df[df["Name"].isin(self.data["names"])].fillna("").reset_index(drop=True)
@@ -184,10 +185,10 @@ class google_sheet_updater:
 
     def create_test_sheet(self, test_name, num_questions):
         # create sheet with test_name
-        self.client.open(SHEET_NAME).add_worksheet(test_name, len(self.data["names"]) + 1, num_questions + 1 + 3)
+        self.client.open(SHEET_NAME).add_worksheet(test_name, len(self.data["names"]) + 1, num_questions + 1 + 4)  # Add 1 to account for the "Adjustments" column
 
         # entire DF type is str
-        cols = ["Name"] + [f"P{i + 1}" for i in range(num_questions)] + ["TOTAL SCORE", "RANKINGS", "SCORES"]
+        cols = ["Name", "Adj."] + [f"P{i + 1}" for i in range(num_questions)] + ["TOTAL SCORE", "RANKINGS", "SCORES"] 
         df = pd.DataFrame(columns=cols, dtype=str)
         df["Name"] = self.data["names"]
         df = df.fillna("")

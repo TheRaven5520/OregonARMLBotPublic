@@ -6,3 +6,4 @@ __pycache__/*
 *.swp
 google_sheets/google_sheets_key.json
 .archive/*
+test.py

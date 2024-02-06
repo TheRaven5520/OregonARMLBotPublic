@@ -1,23 +1,16 @@
-import os
-import dotenv
+from discordHelper import *
+
 dotenv.load_dotenv()
 TOKEN = os.getenv("TOKEN")
 
-import discord
-from discord.utils import get
-from discord.ext import commands
-
-from functionality import *
-from discordHelper import discordHelper
+# arml specific functionality
+from POTDfunctionality import *
 from google_sheets.googleSheetsUpdater import google_sheet_updater
-import asyncio
+from user_data.user_data import ud
 
-from itertools import cycle
-status = cycle(['Oregon ARML POTDs', 'Oregon ARML POTDs.'])
-from discord.ext import tasks
-
-from textwrap import dedent 
-import traceback
+# python functionality
+from textwrap import dedent
+import datetime
 
 def chain(*decs):
     def deco(f): 
@@ -33,24 +26,15 @@ def check_float(x):
     except:
         return False
 
-def log_error(e, act = True):
-    '''logs error e'''
-    with open(f"/home/ec2-user/PrivateData/error_log.txt", "a") as file:
-        file.write(f"[{pd.Timestamp.now(tz=timezone)}] {e}\n")
-        if act: traceback.print_exc(file=file)
-
 ##################################################################################
 # SET UP DISCORD BOT, CONSTANTS, AND LOAD DATA
 
 MAX_ROW_PUBLIC_LEADERBOARD = 20
 my_userid = 568622241902886934
-DATA_DIR = "/home/ec2-user/PrivateData/"
 
-driver, intents, client, helper, gs_helper = None, None, None, None, None
+potd_driver, helper, gs_helper = None, None, None
 
-driver = Driver()
-intents = discord.Intents.all()
-client = commands.Bot(command_prefix='-', intents=intents)
+potd_driver = Driver()
 
 ##################################################################################
 # SECURITY & STORAGE
@@ -72,7 +56,9 @@ def is_admin_channel(ctx: commands.Context) -> bool:
 
     @return (bool): Returns a boolean value indicating whether the context's channel is the admin channel.
     '''
-    return is_me(ctx) or ctx.channel.id == constants["admin_channel"]
+    if is_me(ctx): return True
+    if ctx.guild is None: return False
+    return ctx.channel.id == constants["admin_channel"]
 def is_administrator(ctx: commands.Context) -> bool:
     '''
     Check if the user invoking the command is an administrator.
@@ -81,7 +67,9 @@ def is_administrator(ctx: commands.Context) -> bool:
     
     @return (bool): Returns a boolean value indicating whether the user is an administrator.
     '''
-    return is_me(ctx) or bool(ctx.author.guild_permissions.administrator)
+    if is_me(ctx): return True
+    if ctx.guild is None: return False
+    return bool(ctx.author.guild_permissions.administrator)
 
 def wrapper_funcs(func):
     async def wrapped_func(ctx, *args, **kwargs):
@@ -98,6 +86,121 @@ def wrapper_funcs(func):
     wrapped_func.__name__ = func.__name__
     wrapped_func.__doc__ = func.__doc__
     return wrapped_func
+
+##################################################################################
+# USER DATA
+
+def get_ud_data():
+    '''
+    Retrieves the user data for the current season in a DF
+    ''' 
+    df = ud.get_data()
+    for key in ud.keys:
+        if key not in df.columns:
+            df[key] = 'NA'
+    df = df[ud.keys]
+
+    member_ids = [member.id for member in helper.guild().members]
+    df.index = [helper.guild().get_member(int(index)).display_name for index in df.index if int(index) in member_ids]
+
+    return df
+
+@chain(client.command(), wrapper_funcs)
+async def ud_mydata(ctx: commands.Context) -> None:
+    '''
+    Retrieves the user data for the invoking user.
+
+    @param ctx (commands.Context): The context object representing the invocation context.
+
+    @returns: None
+    ''' 
+    df = get_ud_data()
+    if str(ctx.author.display_name) not in df.index:
+        ud.create_user(str(ctx.author.id))
+        df.loc[ctx.author.display_name] = 'NA'
+
+    df = df.loc[[ctx.author.display_name]]
+
+    df = df.T
+
+    await ctx.send(f"```{df.to_string(index=True)}```")
+
+@chain(client.command(), commands.check(is_administrator), wrapper_funcs)
+async def ud_data(ctx: commands.Context) -> None:
+    '''
+    Retrieves all user data.
+
+    @param ctx (commands.Context): The context object representing the invocation context.
+
+    @returns: None
+    '''
+    df = get_ud_data()
+
+    await ctx.send(f"```{df.to_string(index=True)}```")
+
+@chain(client.command(), commands.check(is_administrator), wrapper_funcs)
+async def ud_update_gs(ctx: commands.Context) -> None:
+    '''
+    Updates the google sheet with the user data.
+
+    @param ctx (commands.Context): The context object representing the invocation context.
+
+    @returns: None
+    '''
+    df = get_ud_data()
+    df = df.reset_index().rename(columns={"index": "Name"})
+    gs_helper.post_df_to_sheet(df, "User Data")
+    await ctx.send(f"Data updated successfully.")
+
+@chain(client.command(), wrapper_funcs)
+async def ud_update_mydata(ctx: commands.Context, key: str, value: str) -> None:
+    '''
+    Updates the user data for the invoking user.
+
+    @param ctx (commands.Context): The context object representing the invocation context.
+    @param key (str): The key to update.
+    @param value (str): The value to update the key to.
+
+    @returns: None
+    '''
+    result = ud.set_user_data(str(ctx.author.id), key, value)
+    if result:
+        await ctx.send(f"Data updated successfully.")
+    else:
+        await ctx.send(f"Key not valid.")
+
+@chain(client.command(), commands.check(is_administrator), wrapper_funcs)
+async def ud_add_key(ctx: commands.Context, key: str) -> None:
+    '''
+    Adds a key to the user data.
+
+    @param ctx (commands.Context): The context object representing the invocation context.
+    @param key (str): The key to add.
+
+    @returns: None
+    '''
+    result = ud.add_key(key)
+    if result:
+        await ctx.send(f"Key added successfully.")
+    else:
+        await ctx.send(f"Key already exists.")
+
+@chain(client.command(), commands.check(is_administrator), wrapper_funcs)
+async def ud_remove_key(ctx: commands.Context, key: str) -> None:
+    '''
+    Removes a key from the user data.
+
+    @param ctx (commands.Context): The context object representing the invocation context.
+    @param key (str): The key to remove.
+
+    @returns: None
+    '''
+    result = ud.remove_key(key)
+    if result:
+        await ctx.send(f"Key removed successfully.")
+    else:
+        await ctx.send(f"Key not valid.")
+
 
 
 ##################################################################################
@@ -116,7 +219,7 @@ async def answer(ctx: commands.Context, problem_id: str, answer: str = "") -> No
     @returns: None
     '''
 
-    season = driver.season
+    season = potd_driver.season
     problem = season.get_problem(problem_id)
     if not problem:
         await ctx.send("Problem not found")
@@ -146,7 +249,7 @@ async def answer(ctx: commands.Context, problem_id: str, answer: str = "") -> No
 
 # Command to add an answer to the current season
 @chain(client.command(), wrapper_funcs)
-async def rankings(ctx: commands.Context, season=None) -> None:
+async def potd_rankings(ctx: commands.Context, season=None) -> None:
     '''
     Retrieves top rankings for a specific season, current season by default.
 
@@ -154,17 +257,17 @@ async def rankings(ctx: commands.Context, season=None) -> None:
     
     @returns: None
     '''
-    if season == None: season = str(driver.season.CURRENT_SEASON)
+    if season == None: season = str(potd_driver.season.CURRENT_SEASON)
     await ctx.send(string_rankings(get_rankings_df(season, True)))
 
 @chain(client.command(), wrapper_funcs) 
-async def myrank(ctx, season=None):
+async def potd_myrank(ctx, season=None):
     '''Retrieves your rank, points for specific season, current season by default.
     
     @param season (int, optional): Optional. The season for which rankings are to be retrieved. Defaults to current season.
     
     @returns: None'''
-    if season == None: season = str(driver.season.CURRENT_SEASON)
+    if season == None: season = str(potd_driver.season.CURRENT_SEASON)
     rankings_df = get_rankings_df(season)
     if str(ctx.author.id) in rankings_df['Member ID'].values: 
         await ctx.send(string_rankings(rankings_df[rankings_df['Member ID'] == str(ctx.author.id)]))
@@ -172,11 +275,10 @@ async def myrank(ctx, season=None):
         await ctx.send(f"You did not have any points in that season.")
 
 @chain(client.command(), wrapper_funcs)
-async def curseas(ctx):
+async def potd_curseas(ctx):
     '''Gets current season'''
-    await ctx.send(driver.season.CURRENT_SEASON)
+    await ctx.send(potd_driver.season.CURRENT_SEASON)
 
-##################################################################################
 # POTD LEADERBOARD
 
 def get_rankings_df(season_id: str, top: bool = False) -> pd.core.frame.DataFrame:
@@ -187,7 +289,7 @@ def get_rankings_df(season_id: str, top: bool = False) -> pd.core.frame.DataFram
     
     @return (pd.core.frame.DataFrame): A DataFrame containing the rank, member ID, and points for each member in the rankings.
     """
-    df = pd.DataFrame(driver.season.get_grades(season_id).items(), columns=['Member ID', 'Points']).sort_values('Points', ascending=False)
+    df = pd.DataFrame(potd_driver.season.get_grades(season_id).items(), columns=['Member ID', 'Points']).sort_values('Points', ascending=False)
     df['Rank'] = df['Points'].rank(method='min', ascending=False).astype(int)
     if len(df) == 0: return df 
     if top: df = df[df['Rank'] <= int(df.iloc[min(MAX_ROW_PUBLIC_LEADERBOARD - 1, len(df) - 1)]['Rank'])]
@@ -213,7 +315,7 @@ async def update_leaderboard() -> None:
     '''
     global constants
     chn = helper.get_channel(constants["leaderboard_output_channel"])
-    new_text = string_rankings(get_rankings_df(str(driver.season.CURRENT_SEASON), True))
+    new_text = string_rankings(get_rankings_df(str(potd_driver.season.CURRENT_SEASON), True))
     if constants["leaderboard_output_message"] == None:
         constants["leaderboard_output_message"] = await chn.send(new_text)
         constants["leaderboard_output_message"] = constants["leaderboard_output_message"].id 
@@ -227,7 +329,7 @@ async def update_leaderboard() -> None:
     store_data()
 
 @chain(client.command(), commands.check(is_administrator), wrapper_funcs)
-async def sranks(ctx, season = None, rankmember: bool = False):
+async def potd_sranks(ctx, season = None, rankmember: bool = False):
     '''[Admin only] Retrieves rankings for season 'season', current season if left blank, sorted alphabetically by name.
 
     @param rankmember (bool, optional): Optional. Whether to add rank & member columns. Defaults to False.
@@ -235,7 +337,7 @@ async def sranks(ctx, season = None, rankmember: bool = False):
 
     @returns None:
     '''
-    if season == None: season = str(driver.season.CURRENT_SEASON)
+    if season == None: season = str(potd_driver.season.CURRENT_SEASON)
     if rankmember != False: rankmember = rankmember[0].lower() in ['t', 'y']
 
     df = get_rankings_df(season)
@@ -254,13 +356,13 @@ async def sranks(ctx, season = None, rankmember: bool = False):
     await ctx.send("```" + df.to_string(header=False, index=False, justify="right")  + "```")
 
 @chain(client.command(), commands.check(is_administrator), wrapper_funcs)
-async def allrankings(ctx, season=None):
+async def potd_allrankings(ctx, season=None):
     '''[Admin only] Retrieves rankings for season 'season', current season if left blank.
     
     @param season (int, optional): Optional. The season for which rankings are to be retrieved. Defaults to current season.
     
     @returns: None'''
-    if season == None: season = str(driver.season.CURRENT_SEASON)
+    if season == None: season = str(potd_driver.season.CURRENT_SEASON)
     await ctx.send(string_rankings(get_rankings_df(season)))
 
 @tasks.loop(minutes=5)
@@ -273,11 +375,10 @@ async def before_edit_leaderboard_msg():
     seconds_until_next_interval = (5 - current_time.minute % 5) * 60 + (60 - current_time.second)
     await asyncio.sleep(seconds_until_next_interval)
 
-##################################################################################
 # POTD PROBLEMS 
 
 @chain(client.command(), commands.check(is_admin_channel), wrapper_funcs)
-async def newprob(ctx, answer="None", start_time=None, end_time=None, problem_text=None):
+async def potd_newprob(ctx, answer="None", start_time=None, end_time=None, problem_text=None):
     '''[Admin only] Adds new problem, sends it in designated problem-of-the-day channel.\nOnly accepts answers within time interval from start_time to end_time
     
     @param answer (int): Integer answer, type NA if non integer answer.
@@ -297,13 +398,13 @@ async def newprob(ctx, answer="None", start_time=None, end_time=None, problem_te
 
     channel = client.get_channel(constants["potd_output_channel"])
     image_filename = await helper.save_image_from_text(ctx)
-    result, text, problem = driver.season.add_problem(problem_text, answer, start_time, end_time)
+    result, text, problem = potd_driver.season.add_problem(problem_text, answer, start_time, end_time)
     
-    driver.add_scheduled_message({
+    potd_driver.add_scheduled_message({
         "text": dedent(f"""
             **{ctx.author.display_name}:** 
             {problem_text}
-            **Season ID:** {driver.season.CURRENT_SEASON}
+            **Season ID:** {potd_driver.season.CURRENT_SEASON}
             **Problem ID:** {problem.id}
 
             Solutions accepted from **{pd.Timestamp(start_time, tz=timezone).strftime("%m/%d/%Y, %H:%M")}** till **{pd.Timestamp(end_time, tz=timezone).strftime("%m/%d/%Y, %H:%M")}**.
@@ -316,7 +417,7 @@ async def newprob(ctx, answer="None", start_time=None, end_time=None, problem_te
 
     image_filename = await helper.save_image_from_text(ctx)
     while image_filename != None:
-        driver.add_scheduled_message({
+        potd_driver.add_scheduled_message({
             "text":"",
             "filename": image_filename,
             "time": end_time, 
@@ -327,51 +428,50 @@ async def newprob(ctx, answer="None", start_time=None, end_time=None, problem_te
     await ctx.send("Problem added successfully.")
 
 @chain(client.command(), commands.check(is_admin_channel), wrapper_funcs)
-async def deleteprob(ctx, problem_id):
+async def potd_deleteprob(ctx, problem_id):
     '''[Admin only] Deletes a problem from the current season based on its ID.
     
     @param problem_id (int)'''
-    result, text = driver.season.delete_problem(problem_id)
+    result, text = potd_driver.season.delete_problem(problem_id)
     await ctx.send(text)
 
 @chain(client.command(), commands.check(is_admin_channel), wrapper_funcs)
-async def upd_ans(ctx, problem_id, answer):
+async def potd_upd_ans(ctx, problem_id, answer):
     '''[Admin only] Sets new answer to problem 
 
     @param problem_id (int)
     @param answer: new answer, "None" or (int)
 
     @returns: None'''
-    result, text = driver.season.set_answer(problem_id, answer)
+    result, text = potd_driver.season.set_answer(problem_id, answer)
     await ctx.send(text)
 
 @chain(client.command(), commands.check(is_admin_channel), wrapper_funcs)
-async def upd_season(ctx, problem_id, season_id):
+async def potd_upd_season(ctx, problem_id, season_id):
     '''[Admin only] Sets season for problem 
 
     @param problem_id (int)
     @param season_id (int)
 
     @returns: None'''
-    result, text = driver.season.set_season(problem_id, season_id)
+    result, text = potd_driver.season.set_season(problem_id, season_id)
     await ctx.send(text)
 
 @chain(client.command(), commands.check(is_admin_channel), wrapper_funcs)
-async def newseason(ctx, val="1"):
+async def potd_newseason(ctx, val="1"):
     '''[Admin only] Creates new season
     
     @param val (int): default 1, number of seasons to change by
 
     @returns: None'''
     val = int(val)
-    driver.create_season(val)
-    await ctx.send(f"Season created successfully. New season: {driver.season.CURRENT_SEASON}")
+    potd_driver.create_season(val)
+    await ctx.send(f"Season created successfully. New season: {potd_driver.season.CURRENT_SEASON}")
 
-##################################################################################
 # POTD UPDATE USER DATA 
 
 @chain(client.command(), commands.check(is_admin_channel), wrapper_funcs)
-async def grade(ctx, grade, feedback = None, attempts_to_add = 1):
+async def potd_grade(ctx, grade, feedback = None, attempts_to_add = 1):
     '''[Admin only] Grades last answer as correct or wrong.\nis_correct = True (if grading as correct) or False (if grading is wrong)
     
     @param grade (int): 0 to 1 scale
@@ -387,7 +487,7 @@ async def grade(ctx, grade, feedback = None, attempts_to_add = 1):
     grade = float(grade)
 
     # get season, get last problem
-    result, last = driver.season.get_last_ungraded()
+    result, last = potd_driver.season.get_last_ungraded()
     if not result:
         await ctx.send("No problems to grade.")
         return
@@ -395,7 +495,7 @@ async def grade(ctx, grade, feedback = None, attempts_to_add = 1):
     member = await client.fetch_user(int(last['person_id']))
     file = discord.File(f"{DATA_DIR}images/{last['filename']}") if last["filename"] else None
 
-    driver.season.grade_last(grade, int(attempts_to_add))
+    potd_driver.season.grade_last(grade, int(attempts_to_add))
 
     message = f"Grader: {ctx.message.author.nick}\nYour answer `{last['answer']}` was graded {grade}/1."
     if feedback != None: message += "\n\n**Feedback: **" + feedback
@@ -403,17 +503,17 @@ async def grade(ctx, grade, feedback = None, attempts_to_add = 1):
     await ctx.send("Last answer graded successfully.")
 
 @chain(client.command(), commands.check(is_admin_channel), wrapper_funcs)
-async def last(ctx, gnext = "False"):
+async def potd_last(ctx, gnext = "False"):
     '''[Admin only] Retrieves last ungraded answer and outputs it.
     
     @params gnext(bool, default=False): whether to get next ungraded problem. Put True if you want next, nothing otherwise
 
     @returns: None'''
-    result, last = driver.season.get_last_ungraded(gnext.lower()[0] in ['t', 'y'])
+    result, last = potd_driver.season.get_last_ungraded(gnext.lower()[0] in ['t', 'y'])
     if not result:
         await ctx.send("No problems to grade.")
         return
-    problem = driver.season.get_problem(last['problem_id'])
+    problem = potd_driver.season.get_problem(last['problem_id'])
     if not problem:
         await ctx.send("Problem not found.")
         return
@@ -426,7 +526,7 @@ async def last(ctx, gnext = "False"):
 
 # Command to update the number of attempts for a person in a problem (only for administrators)
 @chain(client.command(), commands.check(is_admin_channel), wrapper_funcs)
-async def upd_attempts(ctx, problem_id, person_name, num_attempts):
+async def potd_upd_attempts(ctx, problem_id, person_name, num_attempts):
     '''[Admin only] Updates number of attempts 'person_name' took for problem 'problem_id' by adding 'num_attempts'.
     
     @param problem_id (int)
@@ -435,7 +535,7 @@ async def upd_attempts(ctx, problem_id, person_name, num_attempts):
     
     @returns: None'''
     person_name = person_name[2:-1]
-    season = driver.season
+    season = potd_driver.season
     result, text, person = season.set_attempts(problem_id, person_name, int(num_attempts))
     await ctx.send(text)
     if result:
@@ -444,7 +544,7 @@ async def upd_attempts(ctx, problem_id, person_name, num_attempts):
 
 # Command to update the correctness attribute for a person in a problem (only for administrators)
 @chain(client.command(), commands.check(is_admin_channel), wrapper_funcs)
-async def upd_grade(ctx, problem_id, person_name, new_grade, feedback=None):
+async def potd_upd_grade(ctx, problem_id, person_name, new_grade, feedback=None):
     '''[Admin only] Toggles whether 'person_name' got problem 'problem_id' correct.
     
     @param problem_id (int)
@@ -457,7 +557,7 @@ async def upd_grade(ctx, problem_id, person_name, new_grade, feedback=None):
     if not check_float(new_grade):
         await ctx.send(f"Grade {new_grade} is not a float.")
     new_grade = float(new_grade)
-    result, text, person = driver.season.set_grade(problem_id, person_name, new_grade, False)
+    result, text, person = potd_driver.season.set_grade(problem_id, person_name, new_grade, False)
     
     await ctx.send(text)
     if result:
@@ -466,24 +566,23 @@ async def upd_grade(ctx, problem_id, person_name, new_grade, feedback=None):
             await member.send(feedback)
         await member.send(f"Grader: {ctx.message.author.nick}\nYour answer to problem {problem_id} has been rescored to {person.grade}.")
 
-##################################################################################
 # POTD DATA 
 
-def load_data():
+def potd_load_data():
     global constants
-    driver.load_data()
+    potd_driver.load_data()
     with open(f"{DATA_DIR}data/constants.json", "r") as file:
         constants = json.load(file)
-    driver.season.CURRENT_SEASON = constants["CURRENT_SEASON"]
+    potd_driver.season.CURRENT_SEASON = constants["CURRENT_SEASON"]
 def store_data():
     global constants
-    driver.store_data()
-    constants["CURRENT_SEASON"] = driver.season.CURRENT_SEASON
+    potd_driver.store_data()
+    constants["CURRENT_SEASON"] = potd_driver.season.CURRENT_SEASON
     with open(f"{DATA_DIR}data/constants.json", "w") as file:
         json.dump(constants, file, indent=4)
 
 @chain(client.command(), commands.check(is_admin_channel))
-async def store(ctx):
+async def potd_store(ctx):
     '''[Admin only] Manually stores data into data.csv & ungraded.json files.
     
     @returns: None'''
@@ -491,14 +590,14 @@ async def store(ctx):
     await ctx.send("Data stored in data.csv successfully.")
 
 @chain(client.command(), commands.check(is_admin_channel))
-async def load(ctx):
+async def potd_load(ctx):
     '''[Admin only] Manually loads data from data.csv & ungraded.json files.
     
     @returns: None'''
-    load_data()
+    potd_load_data()
     await ctx.send("Data loaded from data.csv successfully.")
 
-load_data()
+potd_load_data()
 
 ##################################################################################
 # SCHEDULE POSTS
@@ -513,7 +612,7 @@ async def schedule(ctx, channel, text, time):
     
     @returns: None'''
     image_filename = await helper.save_image_from_text(ctx)
-    driver.add_scheduled_message({
+    potd_driver.add_scheduled_message({
         "text": f"**{ctx.author.display_name}:**\n" + text, 
         "filename": image_filename,
         "time": time, 
@@ -521,7 +620,7 @@ async def schedule(ctx, channel, text, time):
     })
     image_filename = await helper.save_image_from_text(ctx)
     while image_filename != None:
-        driver.add_scheduled_message({
+        potd_driver.add_scheduled_message({
             "text": f"**{ctx.author.display_name}:**",
             "filename": image_filename,
             "time": time, 
@@ -538,13 +637,14 @@ async def listsched(ctx):
     @params None
 
     @returns None'''
-    if len(driver.scheduled_messages) == 0:
+    if len(potd_driver.scheduled_messages) == 0:
         await ctx.send("No scheduled messages.")
         return 
-    for j, i in driver.scheduled_messages.items():
+    for j, i in potd_driver.scheduled_messages.items():
         file = None
         if i['filename']: file = discord.File(f"{DATA_DIR}images/{i['filename']}")
-        await ctx.send(dedent(f"""
+        await ctx.send(dedent(
+            f"""
                 **ID: {j}**
                 **Text**: {i['text']}
                 **Time**: {i['time']}
@@ -558,8 +658,8 @@ async def remsched(ctx, smesid):
 
     @returns None'''
     
-    if str(smesid) in driver.scheduled_messages:
-        x = driver.scheduled_messages.pop(str(smesid))
+    if str(smesid) in potd_driver.scheduled_messages:
+        x = potd_driver.scheduled_messages.pop(str(smesid))
         if x["filename"]: os.remove(f"{DATA_DIR}images/{x['filename']}")
         await ctx.send("Successfully removed scheduled message.")
     else:
@@ -569,7 +669,7 @@ async def remsched(ctx, smesid):
 async def check_scheduled_messages():
     '''sends scheduled messages on time'''
     global constants
-    scheduled_messages = [(i, j) for i, j in driver.scheduled_messages.items() if pd.Timestamp(j["time"], tz=timezone) <= pd.Timestamp.now(tz=timezone)]
+    scheduled_messages = [(i, j) for i, j in potd_driver.scheduled_messages.items() if pd.Timestamp(j["time"], tz=timezone) <= pd.Timestamp.now(tz=timezone)]
     for i, j in scheduled_messages:
         try:
             if not j["text"]: j["text"] = "​"
@@ -581,7 +681,7 @@ async def check_scheduled_messages():
             channel = helper.get_channel(constants["admin_channel"])
             await channel.send(f"Error sending scheduled message.")
             raise Exception(e)
-        driver.scheduled_messages.pop(i)
+        potd_driver.scheduled_messages.pop(i)
     store_data()
     
 @check_scheduled_messages.before_loop
@@ -594,7 +694,7 @@ async def before_check_scheduled_messages():
 # STATISTICS & COMMUNICATION
 
 @chain(client.command(), commands.check(is_administrator), wrapper_funcs)
-async def reactstats(ctx, post_id):
+async def reactstats(ctx, post_id, do_role):
     '''
     [Admin only] Gets all stats about reactions in a post.
 
@@ -603,7 +703,8 @@ async def reactstats(ctx, post_id):
 
     @returns: None
     '''
-    post_id = int(post_id)
+    helper.parse_type(int, post_id)
+    helper.parse_boolean(do_role)
     
     try:
         post = await helper.get_post(post_id)
@@ -615,20 +716,25 @@ async def reactstats(ctx, post_id):
     # first print each emoji & list of people who reacted to it
     reacting_users = {}
     for reaction in post.reactions:
-        list = ", ".join([user.mention async for user in reaction.users()])
+        list = [user async for user in reaction.users() if not user.bot]
+        if do_role: list = [user for user in list if any(role.id == constants["year_role"] for role in user.roles)]
+        list = ", ".join([user.mention for user in list]) if len(list) > 0 else "None"
         await ctx.send(f"**{reaction.emoji}**: {list}", silent=True)
         async for user in reaction.users():
             if user not in reacting_users: reacting_users[user] = [reaction.emoji]
             else: reacting_users[user].append(reaction.emoji)
 
     # print all users that have no emoji 
-    users_list = [user.mention for user in post.guild.members if user not in reacting_users and not user.bot]
+    users_list = [user for user in post.guild.members if user not in reacting_users and not user.bot]
+    if do_role: users_list = [user for user in users_list if any(role.id == constants["year_role"] for role in user.roles)]
+    users_list = [user.mention for user in users_list]
     await ctx.send(f"**No reaction**: {', '.join(users_list) if len(users_list) > 0 else 'None'}", silent=True)
 
     # second print each person who reacted more than once & the emojis they reacted with 
     message = "More than one reaction:\n"
     for user, emojis in reacting_users.items():
         if len(emojis) > 1:
+            if do_role and not any(role.id == constants["year_role"] for role in user.roles): continue
             message += f"**{user.mention}**: {', '.join(emojis)}\n"
 
     await ctx.send(message, silent=True)
@@ -776,8 +882,8 @@ async def gs_add_potd_season(ctx: commands.Context, date: str = "None", season_i
 
     @returns: None
     '''
-    if season_id == "None": season_id = str(driver.season.CURRENT_SEASON - 1)
-    gs_helper.add_potd_season(driver, helper, sheet_name, season_id, date)
+    if season_id == "None": season_id = str(potd_driver.season.CURRENT_SEASON - 1)
+    gs_helper.add_potd_season(potd_driver, helper, sheet_name, season_id, date)
     await ctx.send(f"Added season {season_id} to sheet '{sheet_name}'.")
 
 # gs_del_sheet

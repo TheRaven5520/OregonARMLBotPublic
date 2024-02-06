@@ -1,6 +1,31 @@
 from unique_id.unique_id import unique_id
+import pandas as pd, numpy as np, json 
+import os, sys, dotenv
+import asyncio, traceback
+
+######################################## DISCORD SET UP STUFF
+
+import discord
+from discord.utils import get
+from discord.ext import commands, tasks
+from itertools import cycle 
+status = cycle(['Helping users.', 'Managing servers.'])
+
+intents = discord.Intents.all()
+client = commands.Bot(command_prefix='-', intents=intents)
+
+######################################## CONSTANTS
 
 DATA_DIR = "/home/ec2-user/PrivateData/"
+timezone = 'America/Los_Angeles'
+
+def log_error(e, act=True):
+    '''logs error e'''
+    with open(f"/home/ec2-user/PrivateData/error_log.txt", "a") as file:
+        file.write(f"[{pd.Timestamp.now(tz='America/Los_Angeles')}] {e}\n")
+        if act: traceback.print_exc(file=file)
+
+######################################## DISCORD HELPER
 
 class discordHelper:
     def __init__(self, client, server_id):
@@ -64,3 +89,32 @@ class discordHelper:
             return filename
         else:
             return None
+
+    ################ INPUT PARSERS
+
+    def parse_role(self, role):
+        if role == "None": return None
+        return self.guild().get_role(int(role[3:-1]))
+    def parse_roles(self, roles):
+        if roles == "None": return None
+        return [self.parse_role(role) for role in roles.split(" ")]
+
+    def parse_user(self, user):
+        if user == "None": return None
+        return self.get_member(int(user[2:-1]))
+    def parse_users(self, users):
+        if users == "None": return None
+        return [self.parse_user(user) for user in users.split(" ")]
+
+    def parse_channel(self, channel):
+        if channel == "None": return None
+        return self.get_channel(int(channel[2:-1]))
+
+    def parse_boolean(self, boolean):
+        if boolean == "None": return None
+        return boolean.lower()[0] in ['t', 'y']
+    def parse_type(self, type, val):
+        try: return type(val)
+        except: return None
+
+    

@@ -1,18 +1,5 @@
-import pandas as pd
+from discordHelper import *
 import random
-import json
-import os
-import asyncio
-import datetime
-from unique_id.unique_id import unique_id
-
-# import time
-# import ast
-
-import pytz 
-timezone = 'America/Los_Angeles'
-
-DATA_DIR = '/home/ec2-user/PrivateData/'
 
 class Person:
     def __init__(self, person_id, num_attempts=0, grade='0'):

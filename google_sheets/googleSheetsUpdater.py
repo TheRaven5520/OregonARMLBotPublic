@@ -1,20 +1,13 @@
 import gspread
 from gspread_dataframe import get_as_dataframe
 from oauth2client.service_account import ServiceAccountCredentials
-import json
-import pandas as pd
-import traceback
 
-import os 
+import sys
+sys.path.append('..')
+from discordHelper import *
+
 import warnings
 warnings.filterwarnings("ignore")
-
-
-def log_error(e, act=True):
-    '''logs error e'''
-    with open(f"/home/ec2-user/PrivateData/error_log.txt", "a") as file:
-        file.write(f"[{pd.Timestamp.now(tz='America/Los_Angeles')}] {e}\n")
-        if act: traceback.print_exc(file=file)
 
 # set all maxes for df display to None 
 pd.set_option('display.max_rows', None)
@@ -24,7 +17,6 @@ pd.set_option('display.max_colwidth', None)
 
 SHEET_NAME = "[Current] 2024 ARML Log (Responses)"
 rootDir = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/") + "/"
-DATA_DIR='/home/ec2-user/PrivateData/'
 
 def cs(n):
     string = ""
@@ -101,7 +93,6 @@ class google_sheet_updater:
         self.store_ws(sheet_name, df)
         self.store_data()
 
-
     def store_all_displays(self):
         for file in os.listdir(f'{DATA_DIR}gsdata/'):
             filename, extension = os.path.splitext(file)
@@ -147,6 +138,14 @@ class google_sheet_updater:
             filename, extension = os.path.splitext(file)
             if extension == '.csv':
                 self.update_display(filename)
+
+    def post_df_to_sheet(self, df, sheet_name):
+        ws, _ = self.get_ws(sheet_name)
+        if ws is None: ws = self.SHEET.add_worksheet(sheet_name, 1, 1)
+
+        ws.resize(cols=len(df.columns), rows=len(df.index) + 1)
+
+        ws.update(values=[df.columns.values.tolist()] + df.values.tolist(), range_name=None, value_input_option='USER_ENTERED')
 
     ############################################################################
     # ADD COLUMNS TO SHEET

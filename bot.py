@@ -115,11 +115,12 @@ async def ud_mydata(ctx: commands.Context) -> None:
     @returns: None
     ''' 
     df = get_ud_data()
-    if str(ctx.author.display_name) not in df.index:
-        ud.create_user(str(ctx.author.id))
-        df.loc[ctx.author.display_name] = 'NA'
+    ctx_author = helper.get_member(ctx.author.id)
+    if ctx_author.display_name not in df.index:
+        ud.create_user(str(ctx_author.id))
+        df.loc[ctx_author.display_name] = 'NA'
 
-    df = df.loc[[ctx.author.display_name]]
+    df = df.loc[[ctx_author.display_name]]
 
     df = df.T
 
@@ -163,7 +164,8 @@ async def ud_update_mydata(ctx: commands.Context, key: str, value: str) -> None:
 
     @returns: None
     '''
-    result = ud.set_user_data(str(ctx.author.id), key, value)
+    ctx_author = helper.get_member(ctx.author.id)
+    result = ud.set_user_data(str(ctx_author.id), key, value)
     if result:
         await ctx.send(f"Data updated successfully.")
     else:
@@ -219,6 +221,8 @@ async def answer(ctx: commands.Context, problem_id: str, answer: str = "") -> No
     @returns: None
     '''
 
+    ctx_author = helper.get_member(ctx.author.id)
+
     season = potd_driver.season
     problem = season.get_problem(problem_id)
     if not problem:
@@ -230,21 +234,21 @@ async def answer(ctx: commands.Context, problem_id: str, answer: str = "") -> No
         if not problem.in_interval():
             await ctx.send("Outside time interval.")
             return
-        season.grade_answer(problem_id, str(ctx.author.id), (1 if result else 0))
+        season.grade_answer(problem_id, str(ctx_author.id), (1 if result else 0))
         result = "correct" if result else "wrong"
         await ctx.send(f"Your answer `{answer}` was {result}.")
         channel = client.get_channel(int(constants["admin_channel"]))
-        await channel.send(f"{ctx.author.display_name}'s answer of `{answer}` was marked {result}.")
+        await channel.send(f"{ctx_author.display_name}'s answer of `{answer}` was marked {result}.")
         return
     except:
         pass
     
     filename = await helper.save_image_from_text(ctx)
-    result, text = season.add_answer(problem_id, str(ctx.author.id), answer, filename)
+    result, text = season.add_answer(problem_id, str(ctx_author.id), answer, filename)
     await ctx.send(text)
     if result:
         channel = client.get_channel(int(constants["admin_channel"]))
-        await channel.send(f"Answer Added by {ctx.author.display_name}.")
+        await channel.send(f"Answer Added by {ctx_author.display_name}.")
     return 
 
 # Command to add an answer to the current season
@@ -267,10 +271,11 @@ async def potd_myrank(ctx, season=None):
     @param season (int, optional): Optional. The season for which rankings are to be retrieved. Defaults to current season.
     
     @returns: None'''
+    ctx_author = helper.get_member(ctx.author.id)
     if season == None: season = str(potd_driver.season.CURRENT_SEASON)
     rankings_df = get_rankings_df(season)
-    if str(ctx.author.id) in rankings_df['Member ID'].values: 
-        await ctx.send(string_rankings(rankings_df[rankings_df['Member ID'] == str(ctx.author.id)]))
+    if str(ctx_author.id) in rankings_df['Member ID'].values: 
+        await ctx.send(string_rankings(rankings_df[rankings_df['Member ID'] == str(ctx_author.id)]))
     else:
         await ctx.send(f"You did not have any points in that season.")
 
@@ -387,6 +392,7 @@ async def potd_newprob(ctx, answer="None", start_time=None, end_time=None, probl
 
     @returns: None
     '''
+    ctx_author = helper.get_member(ctx.author.id)
     
     if start_time == None: start_time = (pd.Timestamp.now(tz=timezone).replace(hour=0, minute=0, second=0, microsecond=0) + pd.Timedelta(days=1)).strftime("%m-%d-%Y")
     if end_time == None: end_time = (pd.Timestamp(start_time, tz=timezone)+pd.Timedelta(days=1)).strftime("%m-%d-%Y")
@@ -402,7 +408,7 @@ async def potd_newprob(ctx, answer="None", start_time=None, end_time=None, probl
     
     potd_driver.add_scheduled_message({
         "text": dedent(f"""
-            **{ctx.author.display_name}:** 
+            **{ctx_author.display_name}:** 
             {problem_text}
             **Season ID:** {potd_driver.season.CURRENT_SEASON}
             **Problem ID:** {problem.id}
@@ -611,9 +617,10 @@ async def schedule(ctx, channel, text, time):
     @param time (date): format "MM-DD-YYYY HH:MM:SS", when to send message
     
     @returns: None'''
+    ctx_author = helper.get_member(ctx.author.id)
     image_filename = await helper.save_image_from_text(ctx)
     potd_driver.add_scheduled_message({
-        "text": f"**{ctx.author.display_name}:**\n" + text, 
+        "text": f"**{ctx_author.display_name}:**\n" + text, 
         "filename": image_filename,
         "time": time, 
         "channel": channel[2:-1]
@@ -621,7 +628,7 @@ async def schedule(ctx, channel, text, time):
     image_filename = await helper.save_image_from_text(ctx)
     while image_filename != None:
         potd_driver.add_scheduled_message({
-            "text": f"**{ctx.author.display_name}:**",
+            "text": f"**{ctx_author.display_name}:**",
             "filename": image_filename,
             "time": time, 
             "channel": channel[2:-1]

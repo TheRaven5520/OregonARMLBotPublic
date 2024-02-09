@@ -233,7 +233,7 @@ class Season:
         scores = {}
         for problem_id, problem in self.problems.items():
             if problem.season_id != season_id:
-                continue 
+                continue
             new_scores = problem.solve_scores()
             for a, b in new_scores:
                 scores[a] = scores.get(a, 0) + b

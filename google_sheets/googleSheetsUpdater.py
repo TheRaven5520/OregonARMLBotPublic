@@ -53,6 +53,12 @@ class google_sheet_updater:
         if not (df is None): os.remove(f"{DATA_DIR}gsdata/{sheet_name}.csv")
         return ws is not None or not (df is None)
 
+    def change_ws_name(self, old_name, new_name):
+        ws, df = self.get_ws(old_name)
+        if ws is not None: ws.update_title(new_name)
+        if not (df is None): os.rename(f"{DATA_DIR}gsdata/{old_name}.csv", f"{DATA_DIR}gsdata/{new_name}.csv")
+        return ws is not None or not (df is None)
+
     def store_ws(self, sheet_name, df):
         df.astype(str).fillna("").reset_index(drop=True).to_csv(f"{DATA_DIR}gsdata/{sheet_name}.csv", index=False)
 

@@ -95,13 +95,13 @@ def get_ud_data():
     Retrieves the user data for the current season in a DF
     ''' 
     df = ud.get_data()
-    for key in ud.keys:
-        if key not in df.columns:
-            df[key] = 'NA'
-    df = df[ud.keys]
+    df = pd.DataFrame({key: df.get(key, 'NA') for key in ud.keys})
 
     member_ids = [member.id for member in helper.guild().members]
     df.index = [helper.guild().get_member(int(index)).display_name for index in df.index if int(index) in member_ids]
+
+    users_to_add = [user.display_name for user in helper.get_users([constants["year_role"]]) if user.display_name not in df.index]
+    df = pd.concat([df, pd.DataFrame(index=users_to_add, columns=df.columns).fillna("NA")])
 
     return df
 

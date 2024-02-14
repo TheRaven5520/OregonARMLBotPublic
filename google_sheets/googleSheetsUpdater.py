@@ -59,7 +59,7 @@ class google_sheet_updater:
         if not (df is None): os.rename(f"{DATA_DIR}gsdata/{old_name}.csv", f"{DATA_DIR}gsdata/{new_name}.csv")
         return ws is not None or not (df is None)
 
-    def store_ws(self, sheet_name, df):
+    def store_df_to_csv(self, sheet_name, df):
         df.astype(str).fillna("").reset_index(drop=True).to_csv(f"{DATA_DIR}gsdata/{sheet_name}.csv", index=False)
 
     ############################################################################
@@ -77,27 +77,19 @@ class google_sheet_updater:
 
     def store_display(self, sheet_name):
         ws, df = self.get_ws(sheet_name)
-        new_df = get_as_dataframe(ws, evaluate_formulas=False, parse_dates=False).fillna("")
+        new_df = get_as_dataframe(ws, evaluate_formulas=False, parse_dates=False).fillna("").astype(str)
 
+        # change display names to user IDs where possible
         users = {user.display_name: str(user.id) for user in self.helper.guild().members}
-        for i in range(len(new_df["Name"])):
-            if new_df.loc[i, "Name"] in users:
-                new_df.loc[i, "Name"] = users[new_df.loc[i, "Name"]]
+        new_df["Name"] = [users.get(name, name) for name in new_df["Name"]]
 
-        for col in new_df.columns:
-            if col not in df.columns:
-                df[col] = ""
-        df = df[new_df.columns]
+        # merge new_df with df, keeping union of keeps but prioritizing new_df
+        df = df.reindex(columns=new_df.columns, fill_value="")
+        df = pd.merge(df, new_df, how="outer").drop_duplicates(subset='Name', keep='last', ignore_index=True)
 
-        for i in range(len(new_df["Name"])):
-            name = new_df.loc[i, "Name"]
-            if name in df["Name"].values:
-                df.loc[df['Name'] == 'name'] = new_df.loc[new_df['Name'] == 'name'].values
-            else:
-                df = pd.concat([df, new_df.loc[i:i]], ignore_index=True)
-
-        self.store_ws(sheet_name, df)
+        self.store_df_to_csv(sheet_name, df)
         self.store_data()
+
 
     def store_all_displays(self):
         for file in os.listdir(f'{DATA_DIR}gsdata/'):
@@ -124,7 +116,7 @@ class google_sheet_updater:
             try:
                 member = self.helper.get_member(int(df_names.loc[i, "Name"]))
                 df_names.loc[i, "Name"] = member.display_name
-            except Exception as e:
+            except:
                 continue
 
         df_names = df_names.sort_values(by=["Name"]).reset_index(drop=True)
@@ -134,7 +126,7 @@ class google_sheet_updater:
         ws.update(values=[df_names.columns.values.tolist()] + df_names.values.tolist(), range_name=None, value_input_option='USER_ENTERED')
 
         # STORE CSV
-        self.store_ws(sheet_name, df)
+        self.store_df_to_csv(sheet_name, df)
 
     def update_people(self, names):
         self.data["names"] = names
@@ -162,7 +154,7 @@ class google_sheet_updater:
         if column_name in df.columns: return None
         df.insert(len(df.columns), column_name, "")
 
-        self.store_ws(sheet_name, df)
+        self.store_df_to_csv(sheet_name, df)
         if upd_display: self.update_display(sheet_name)
 
     def add_potd_season(self, driver, helper, sheet_name, season = "None", date = "None"):
@@ -181,7 +173,7 @@ class google_sheet_updater:
             score = scores[df.loc[i, "Name"]] if df.loc[i, "Name"] in scores else "0"
             df.loc[i, f"{season}: {date}"] = str(score)
 
-        self.store_ws(sheet_name, df)
+        self.store_df_to_csv(sheet_name, df)
 
         self.update_display(sheet_name)
 

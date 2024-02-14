@@ -22,7 +22,7 @@ timezone = 'America/Los_Angeles'
 def log_error(e, act=True):
     '''logs error e'''
     with open(f"/home/ec2-user/PrivateData/error_log.txt", "a") as file:
-        file.write(f"[{pd.Timestamp.now(tz='America/Los_Angeles')}] {e}\n")
+        file.write(f"[{pd.Timestamp.now(tz='America/Los_Angeles')}]\n{e}\n")
         if act: traceback.print_exc(file=file)
 
 ######################################## DISCORD HELPER

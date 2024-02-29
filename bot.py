@@ -954,13 +954,13 @@ async def potd_rankings_overall(ctx: commands.Context, is_sorted = "False") -> N
     def calc_points(row):
         row = sorted([float(val) for val in row if val])
         row = row[len(row)//5:]
-        return float(f"{sum(row)/len(row):.2f}")
+        return float(f"{sum(row)/len(row):.2f}") if len(row) > 0 else 0
     df['Points'] = df.apply(calc_points, axis=1)
     df = df.reset_index().rename(columns={'index':'Name'})
 
     # correct members
     users = [user.display_name for user in helper.get_users([constants["year_role"]])]
-    df = df[df['Name'].isin(users)] 
+    df = df[df['Name'].isin(users)][['Name', 'Points']]
     for user in users:
         if user not in df['Name'].values:
             df.loc[len(df.index)] = [user, 0]

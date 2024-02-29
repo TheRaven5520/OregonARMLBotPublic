@@ -960,6 +960,7 @@ async def potd_rankings_overall(ctx: commands.Context, is_sorted = "False") -> N
 
     # correct members
     users = [user.display_name for user in helper.get_users([constants["year_role"]])]
+    print(users)
     df = df[df['Name'].isin(users)][['Name', 'Points']]
     for user in users:
         if user not in df['Name'].values:

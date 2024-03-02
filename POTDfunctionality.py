@@ -1,14 +1,17 @@
 from discordHelper import *
 import random
 
+helper = discordHelper(None, None)
+
 class Person:
-    def __init__(self, person_id, num_attempts=0, grade='0'):
+    def __init__(self, person_id, num_attempts=0, grade='0', responses=[]):
         self.num_attempts = num_attempts
         self.grade = grade
         self.id = person_id
+        self.responses = responses
 
     def to_load(self):
-        return {'id': self.id, 'num_attempts': self.num_attempts, 'grade': self.grade}
+        return {'id': self.id, 'num_attempts': self.num_attempts, 'grade': self.grade, 'responses': self.responses}
 
 class Problem:
     g_problem_id = 0
@@ -44,10 +47,10 @@ class Problem:
 
     ############### MUTATORS
 
-    def set_person(self, person_id: str, num_attempts: int = 0, grade: float = 0):
+    def set_person(self, person_id: str, num_attempts: int = 0, grade: float = 0, responses: list = []):
         if person_id in self.persons:
             return False, f"Person with id {person_id} already in problem {self.id}.", None
-        self.persons[person_id] = Person(person_id, num_attempts, grade)
+        self.persons[person_id] = Person(person_id, num_attempts, grade, responses)
         return True, f"Person with id {person_id} added to problem {self.id}.", self.persons[person_id]
 
     def set_attempts(self, person_id: str, num_attempts: int = 1, add: bool = False):
@@ -108,7 +111,7 @@ class Problem:
 
     def from_load(self, load):
         for person in load:
-            self.set_person(person['id'], person['num_attempts'], person['grade'])
+            self.set_person(person['id'], person['num_attempts'], person['grade'], person['responses'])
 
 class Season:
     def __init__(self):
@@ -161,8 +164,19 @@ class Season:
         problem = self.get_problem(problem_id)
         if not problem: return False, f"Problem {problem_id} not found."
         result, text = problem.set_ans(answer)
+        if helper.parse_type(float, answer) is not None:
+            for person_id, person in problem.persons.items():
+                correct_answer = any(float(response) == float(answer) for response in person.responses)
+                problem.set_grade(person_id, 1 if correct_answer else 0, False)
         return result, text
     
+    def set_time(self, problem_id: str, start_time: str, end_time: str):
+        problem = self.get_problem(problem_id)
+        if not problem: return False, f"Problem {problem_id} not found."
+        problem.start_time = start_time
+        problem.end_time = end_time
+        return True, f"Time set successfully."
+
     def set_season(self, problem_id: str, season_id: str):
         problem = self.get_problem(problem_id)
         if not problem: return False, f"Problem {problem_id} not found."

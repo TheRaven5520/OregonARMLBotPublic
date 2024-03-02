@@ -77,12 +77,12 @@ def wrapper_funcs(func):
             file.write(f"[{pd.Timestamp.now(tz=timezone)}] {ctx.author.id} -- {ctx.author.name} -- {ctx.author.display_name}: {func.__name__}({', '.join(map(str, args))}))" + "\n")
         try:
             value = await func(ctx, *args, **kwargs)
-            return value
         except Exception as e:
             log_error(f"Error in {func.__name__}({', '.join(map(str, args))}) -- {e}")
             await ctx.send("Unknown error in command. Please contact the bot administrator.")
             return None
         store_data()
+        return value
     wrapped_func.__name__ = func.__name__
     wrapped_func.__doc__ = func.__doc__
     return wrapped_func
@@ -203,8 +203,6 @@ async def ud_remove_key(ctx: commands.Context, key: str) -> None:
     else:
         await ctx.send(f"Key not valid.")
 
-
-
 ##################################################################################
 # POTD USER COMMANDS
 
@@ -230,17 +228,20 @@ async def answer(ctx: commands.Context, problem_id: str, answer: str = "") -> No
         return
     
     try:
-        result = (int(problem.answer) == int(answer))
+        result = (float(problem.answer) == float(answer))
         if not problem.in_interval():
             await ctx.send("Outside time interval.")
             return
         season.grade_answer(problem_id, str(ctx_author.id), (1 if result else 0))
+        person = problem.get_person(str(ctx_author.id))
+        person.responses.append(str(answer))
         result = "correct" if result else "wrong"
         await ctx.send(f"Your answer `{answer}` was {result}.")
         channel = client.get_channel(int(constants["admin_channel"]))
         await channel.send(f"{ctx_author.display_name}'s answer of `{answer}` was marked {result}.")
         return
-    except:
+    except Exception as e:
+        print(e)
         pass
     
     filename = await helper.save_image_from_text(ctx)
@@ -461,6 +462,17 @@ async def potd_upd_season(ctx, problem_id, season_id):
 
     @returns: None'''
     result, text = potd_driver.season.set_season(problem_id, season_id)
+    await ctx.send(text)
+
+@chain(client.command(), commands.check(is_admin_channel), wrapper_funcs)
+async def potd_upd_time(ctx, problem_id, start_time, end_time):
+    '''[Admin only] Sets new time interval for problem
+
+    @param problem_id (int)
+    @param start_time, end_time (dates): Format "MM-DD-YYYY HH:MM:SS"
+
+    @returns: None'''
+    result, text = potd_driver.season.set_time(problem_id, start_time, end_time)
     await ctx.send(text)
 
 @chain(client.command(), commands.check(is_admin_channel), wrapper_funcs)

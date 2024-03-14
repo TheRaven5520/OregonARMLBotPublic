@@ -738,7 +738,7 @@ async def reactstats(ctx, post_id, role_needed = None):
     reacting_users = {}
     for reaction in post.reactions:
         list = [user.mention async for user in reaction.users() if user.display_name in user_list]
-        await ctx.send(f"**{reaction.emoji}**: {", ".join(list)}", silent=True)
+        await ctx.send(f"**{reaction.emoji}**: {', '.join(list)}", silent=True)
         async for user in reaction.users():
             if user.display_name not in reacting_users: reacting_users[user] = [reaction.emoji] 
             else: reacting_users[user].append(reaction.emoji)

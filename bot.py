@@ -724,8 +724,7 @@ async def reactstats(ctx, post_id, role_needed = None):
     @returns: None
     '''
     post_id = helper.parse_type(int, post_id)
-    role_needed = helper.parse_type(int, role_needed). if role_needed is not None else constants["year_role"]
-    print(role_needed)
+    role_needed = helper.parse_type(int, role_needed).id if role_needed is not None else constants["year_role"]
     
     try:
         post = await helper.get_post(post_id)
@@ -735,30 +734,30 @@ async def reactstats(ctx, post_id, role_needed = None):
         return
 
     # first print each emoji & list of people who reacted to it
-    reacting_users = {}
-    for reaction in post.reactions:
-        list = [user async for user in reaction.users() if not user.bot]
-        list = [user for user in list if any(role.id == role_needed for role in user.roles)]
-        list = ", ".join([user.mention for user in list]) if len(list) > 0 else "None"
-        await ctx.send(f"**{reaction.emoji}**: {list}", silent=True)
-        async for user in reaction.users():
-            if user not in reacting_users: reacting_users[user] = [reaction.emoji]
-            else: reacting_users[user].append(reaction.emoji)
+    # reacting_users = {}
+    # for reaction in post.reactions:
+    #     list = [user async for user in reaction.users() if not user.bot]
+    #     list = [user for user in list if any(role.id == role_needed for role in user.roles)]
+    #     list = ", ".join([user.mention for user in list]) if len(list) > 0 else "None"
+    #     await ctx.send(f"**{reaction.emoji}**: {list}", silent=True)
+    #     async for user in reaction.users():
+    #         if user not in reacting_users: reacting_users[user] = [reaction.emoji]
+    #         else: reacting_users[user].append(reaction.emoji)
 
-    # print all users that have no emoji 
-    users_list = [user for user in post.guild.members if user not in reacting_users and not user.bot]
-    users_list = [user for user in users_list if any(role.id == role_needed for role in user.roles)]
-    users_list = [user.mention for user in users_list]
-    await ctx.send(f"**No reaction**: {', '.join(users_list) if len(users_list) > 0 else 'None'}", silent=True)
+    # # print all users that have no emoji 
+    # users_list = [user for user in post.guild.members if user not in reacting_users and not user.bot]
+    # users_list = [user for user in users_list if any(role.id == role_needed for role in user.roles)]
+    # users_list = [user.mention for user in users_list]
+    # await ctx.send(f"**No reaction**: {', '.join(users_list) if len(users_list) > 0 else 'None'}", silent=True)
 
-    # second print each person who reacted more than once & the emojis they reacted with 
-    message = "More than one reaction:\n"
-    for user, emojis in reacting_users.items():
-        if len(emojis) > 1:
-            if not any(role.id == role_needed for role in user.roles): continue
-            message += f"**{user.mention}**: {', '.join(emojis)}\n"
+    # # second print each person who reacted more than once & the emojis they reacted with 
+    # message = "More than one reaction:\n"
+    # for user, emojis in reacting_users.items():
+    #     if len(emojis) > 1:
+    #         if not any(role.id == role_needed for role in user.roles): continue
+    #         message += f"**{user.mention}**: {', '.join(emojis)}\n"
 
-    await ctx.send(message, silent=True)
+    # await ctx.send(message, silent=True)
 
     return 
 

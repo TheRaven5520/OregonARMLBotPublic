@@ -713,7 +713,7 @@ async def before_check_scheduled_messages():
 # STATISTICS & COMMUNICATION
 
 @chain(client.command(), commands.check(is_administrator), wrapper_funcs)
-async def reactstats(ctx, post_id, do_role="False"):
+async def reactstats(ctx, post_id, role = None, do_role="False"):
     '''
     [Admin only] Gets all stats about reactions in a post.
 
@@ -724,6 +724,8 @@ async def reactstats(ctx, post_id, do_role="False"):
     '''
     helper.parse_type(int, post_id)
     helper.parse_boolean(do_role)
+    if role is not None:
+        helper.parse_
     
     try:
         post = await helper.get_post(post_id)

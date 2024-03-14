@@ -94,7 +94,6 @@ class discordHelper:
 
     def parse_role(self, role):
         if role == "None": return None
-        print("X: ", int(role[3:-1]))
         return self.guild().get_role(int(role[3:-1]))
     def parse_roles(self, roles):
         if roles == "None": return None

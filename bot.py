@@ -743,22 +743,9 @@ async def reactstats(ctx, post_id, role_needed = None):
             if user.display_name not in reacting_users: reacting_users[user] = [reaction.emoji] 
             else: reacting_users[user].append(reaction.emoji)
 
-
-    # # first print each emoji & list of people who reacted to it
-    # reacting_users = {}
-    # for reaction in post.reactions:
-    #     list = [user async for user in reaction.users() if not user.bot]
-    #     list = [user for user in list if any(role.id == role_needed for role in user.roles)]
-    #     list = ", ".join([user.mention for user in list]) if len(list) > 0 else "None"
-    #     await ctx.send(f"**{reaction.emoji}**: {list}", silent=True)
-    #     async for user in reaction.users():
-    #         if user not in reacting_users: reacting_users[user] = [reaction.emoji]
-    #         else: reacting_users[user].append(reaction.emoji)
-
     users_list = [user.mention for user in user_list.values() if user not in reacting_users]
     await ctx.send(f"**No reaction**: {', '.join(users_list) if len(users_list) > 0 else 'None'}", silent=True)
 
-    # second print each person who reacted more than once & the emojis they reacted with 
     message = "More than one reaction:\n"
     for user, emojis in reacting_users.items():
         if len(emojis) > 1:

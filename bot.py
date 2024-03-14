@@ -724,8 +724,9 @@ async def reactstats(ctx, post_id, role_needed = None):
     @returns: None
     '''
     post_id = helper.parse_type(int, post_id)
-    if role is not None:
+    if role_needed is not None:
         helper.parse_role(role_needed)
+        print(role_needed)
     else:
         role_needed = constants["year_role"]
     

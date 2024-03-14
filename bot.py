@@ -713,19 +713,19 @@ async def before_check_scheduled_messages():
 # STATISTICS & COMMUNICATION
 
 @chain(client.command(), commands.check(is_administrator), wrapper_funcs)
-async def reactstats(ctx, post_id, role = None, do_role="False"):
+async def reactstats(ctx, post_id, role_needed = None):
     '''
     [Admin only] Gets all stats about reactions in a post.
 
     @param ctx (commands.Context): The context of the command.
     @param post_id (int): The ID of the post to get stats for.
+    @param role_needed (int, optional): The ID of the role needed to be counted. Defaults to None.
 
     @returns: None
     '''
     post_id = helper.parse_type(int, post_id)
-    do_role = helper.parse_boolean(do_role)
     if role is not None:
-        helper.parse_
+        helper.parse_role()
     
     try:
         post = await helper.get_post(post_id)
@@ -738,7 +738,7 @@ async def reactstats(ctx, post_id, role = None, do_role="False"):
     reacting_users = {}
     for reaction in post.reactions:
         list = [user async for user in reaction.users() if not user.bot]
-        if do_role: list = [user for user in list if any(role.id == role_needed for role in user.roles)]
+        list = [user for user in list if any(role.id == role_needed for role in user.roles)]
         list = ", ".join([user.mention for user in list]) if len(list) > 0 else "None"
         await ctx.send(f"**{reaction.emoji}**: {list}", silent=True)
         async for user in reaction.users():
@@ -747,7 +747,7 @@ async def reactstats(ctx, post_id, role = None, do_role="False"):
 
     # print all users that have no emoji 
     users_list = [user for user in post.guild.members if user not in reacting_users and not user.bot]
-    if do_role: users_list = [user for user in users_list if any(role.id == role_needed for role in user.roles)]
+    users_list = [user for user in users_list if any(role.id == role_needed for role in user.roles)]
     users_list = [user.mention for user in users_list]
     await ctx.send(f"**No reaction**: {', '.join(users_list) if len(users_list) > 0 else 'None'}", silent=True)
 
@@ -755,7 +755,7 @@ async def reactstats(ctx, post_id, role = None, do_role="False"):
     message = "More than one reaction:\n"
     for user, emojis in reacting_users.items():
         if len(emojis) > 1:
-            if do_role and not any(role.id == role_needed for role in user.roles): continue
+            if not any(role.id == role_needed for role in user.roles): continue
             message += f"**{user.mention}**: {', '.join(emojis)}\n"
 
     await ctx.send(message, silent=True)

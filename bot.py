@@ -735,6 +735,11 @@ async def reactstats(ctx, post_id, role_needed = None):
 
     user_list = [user for user in post.guild.members if not user.bot and any(role.id == role_needed for role in user.roles)]
 
+    reacting_users = {}
+    for reaction in post.reactions:
+        await ctx.send(f"**{reaction.emoji}**: {list}", silent=True)
+        
+
     # first print each emoji & list of people who reacted to it
     reacting_users = {}
     for reaction in post.reactions:

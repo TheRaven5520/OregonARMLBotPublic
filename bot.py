@@ -737,10 +737,10 @@ async def reactstats(ctx, post_id, role_needed = None):
 
     reacting_users = {}
     for reaction in post.reactions:
-        user_list = [
-            user.mention for user in reaction.
-        ]
+        user_list = [user.mention async for user in reaction.users() if user.display_name in user_list]
         await ctx.send(f"**{reaction.emoji}**: {list}", silent=True)
+        async for user in reaction.users():
+            if user not in reacting_users: 
         
 
     # first print each emoji & list of people who reacted to it

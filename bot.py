@@ -755,12 +755,7 @@ async def reactstats(ctx, post_id, role_needed = None):
     #         if user not in reacting_users: reacting_users[user] = [reaction.emoji]
     #         else: reacting_users[user].append(reaction.emoji)
 
-    
-
-    # print all users that have no emoji 
-    users_list = [user for user in post.guild.members if user not in reacting_users and not user.bot]
-    users_list = [user for user in users_list if any(role.id == role_needed for role in user.roles)]
-    users_list = [user.mention for user in users_list]
+    users_list = [user.mention for user in user_list.values() if user not in reacting_users]
     await ctx.send(f"**No reaction**: {', '.join(users_list) if len(users_list) > 0 else 'None'}", silent=True)
 
     # second print each person who reacted more than once & the emojis they reacted with 

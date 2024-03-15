@@ -26,12 +26,15 @@ class user_data:
     def data_as_df(self):
         return pd.DataFrame(self.data).fillna("-").astype(str).T
     
-    def df_to_data(self, df):
-        self.data = df.T.to_dict()
+    def df_to_data(self, df, helper):
+        for index, row in df.iterrows():
+            print([index, row])
+        
         # deepcopy data into olddata
-        self.olddata = cp.deepcopy(self.data) 
-        self.data = {{key:val for key, val in user.items() if val != "-"} for user in self.data}
-        self.store_data()
+        # self.olddata = self.data.copy()
+        # self.data = {key:val for key, val in self.data.items() if val != "-"}
+        # self.store_data()
+        return True 
 
     # mutators
     def create_user(self, user_id):

@@ -47,6 +47,9 @@ class google_sheet_updater:
             ws = None
         return ws, None if not os.path.exists(f"{DATA_DIR}gsdata/{sheet_name}.csv") else pd.read_csv(f"{DATA_DIR}gsdata/{sheet_name}.csv", dtype=str).fillna("").reset_index(drop=True)
 
+    def get_df_fromsheet(self, sheet_name):
+        return get_as_dataframe(self.SHEET.worksheet(sheet_name), evaluate_formulas=False, parse_dates=False).fillna("").astype(str)
+
     def del_ws(self, sheet_name):
         ws, df = self.get_ws(sheet_name)
         if ws is not None: self.SHEET.del_worksheet(ws)
@@ -77,7 +80,7 @@ class google_sheet_updater:
 
     def store_display(self, sheet_name):
         ws, df = self.get_ws(sheet_name)
-        new_df = get_as_dataframe(ws, evaluate_formulas=False, parse_dates=False).fillna("").astype(str)
+        new_df = self.get_df_fromsheet(sheet_name)
 
         # change display names to user IDs where possible
         users = {user.display_name: str(user.id) for user in self.helper.guild().members}

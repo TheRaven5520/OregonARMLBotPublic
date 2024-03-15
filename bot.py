@@ -95,13 +95,13 @@ def get_ud_data():
     Retrieves the user data for the current season in a DF
     ''' 
     df = ud.data_as_df()
-    df = pd.DataFrame({key: df.get(key, 'NA') for key in ud.keys})
+    df = pd.DataFrame({key: df.get(key, '-') for key in ud.keys})
 
     member_ids = [member.id for member in helper.guild().members]
     df.index = [helper.guild().get_member(int(index)).display_name for index in df.index if int(index) in member_ids]
 
     users_to_add = [user.display_name for user in helper.get_users([constants["year_role"]]) if user.display_name not in df.index]
-    df = pd.concat([df, pd.DataFrame(index=users_to_add, columns=df.columns).fillna("NA")])
+    df = pd.concat([df, pd.DataFrame(index=users_to_add, columns=df.columns).fillna("-")])
 
     return df
 
@@ -162,9 +162,19 @@ async def gs_update_ud(ctx: commands.Context) -> None:
 
     @returns: None
     '''
-    _, gs_df = gs_helper.get_ws("User Data")
-    print(gs_df)
-    await ctx.send("Data stored successfully." if res else "Error.")
+    gs_df = gs_helper.get_df_fromsheet("User Data")
+    users = helper.guild().members 
+    display_to_id = {user.display_name: str(user.id) for user in users}
+    for _, row in gs_df.iterrows():
+        id = display_to_id[row['Name']]
+        for key, val in row.items():
+            if key=="Name": continue
+            if val=='-':
+                if id in ud.data and key in ud.data[id]: del ud.data[id][key]
+                continue
+            ud.set_user_data(id, key, val)
+    ud.store_data()
+    await ctx.send("Data stored successfully.")
 
 @chain(client.command(), wrapper_funcs)
 async def ud_update_mydata(ctx: commands.Context, key: str, value: str) -> None:

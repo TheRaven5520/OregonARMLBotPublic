@@ -12,6 +12,7 @@ class user_data:
         self.data = {}
         self.load_data()
 
+    # load & store
     def load_data(self):
         with open(f'{DATA_DIR}user_data/data.json') as file:
             self.data = json.load(file)
@@ -21,15 +22,24 @@ class user_data:
         with open(f'{DATA_DIR}user_data/data.json', 'w') as file:
             json.dump({'keys': self.keys, 'data': self.data}, file, indent=4)
     
+    # accessors 
+    def data_as_df(self):
+        return pd.DataFrame(self.data).fillna("-").astype(str).T
+    
+    def df_to_data(self, df):
+        self.data = df.T.to_dict()
+        # deepcopy data into olddata
+        self.olddata = cp.deepcopy(self.data) 
+        self.data = {{key:val for key, val in user.items() if val != "-"} for user in self.data}
+        self.store_data()
+
+    # mutators
     def create_user(self, user_id):
         if user_id in self.data:
             return False
         user_id = str(user_id)
         self.data[user_id] = {}
         return True
-
-    def get_data(self):
-        return pd.DataFrame(self.data).fillna("NA").astype(str).T
 
     def set_user_data(self, user_id, key, value):
         user_id = str(user_id)
@@ -57,5 +67,6 @@ class user_data:
             return True
         else:
             return False
+
 
 ud = user_data()

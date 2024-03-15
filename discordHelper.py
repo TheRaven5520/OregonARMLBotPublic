@@ -1,5 +1,5 @@
 from unique_id.unique_id import unique_id
-import pandas as pd, numpy as np, json 
+import pandas as pd, numpy as np, json, copy as cp
 import os, sys, dotenv
 import asyncio, traceback
 
@@ -16,12 +16,15 @@ client = commands.Bot(command_prefix='-', intents=intents)
 
 ######################################## CONSTANTS
 
-DATA_DIR = "/home/ec2-user/PrivateData/"
+# data dir is parent_dir/PrivateData/
+DATA_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/PrivateData/"
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 timezone = 'America/Los_Angeles'
 
 def log_error(e, act=True):
     '''logs error e'''
-    with open(f"/home/ec2-user/PrivateData/error_log.txt", "a") as file:
+    with open(f"{DATA_DIR}error_log.txt", "a") as file:
         file.write(f"[{pd.Timestamp.now(tz='America/Los_Angeles')}]\n{e}\n")
         if act: traceback.print_exc(file=file)
 

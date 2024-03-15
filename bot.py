@@ -94,7 +94,7 @@ def get_ud_data():
     '''
     Retrieves the user data for the current season in a DF
     ''' 
-    df = ud.get_data()
+    df = ud.data_as_df()
     df = pd.DataFrame({key: df.get(key, 'NA') for key in ud.keys})
 
     member_ids = [member.id for member in helper.guild().members]
@@ -153,6 +153,19 @@ async def ud_update_gs(ctx: commands.Context) -> None:
     gs_helper.post_df_to_sheet(df, "User Data")
     await ctx.send(f"Data updated successfully.")
 
+@chain(client.command(), commands.check(is_administrator), wrapper_funcs)
+async def gs_update_ud(ctx: commands.Context) -> None:
+    '''
+    Updates the user data with the google sheet.
+
+    @param ctx (commands.Context): The context object representing the invocation context.
+
+    @returns: None
+    '''
+    _, gs_df = gs_helper.get_ws("User Data")
+    print(gs_df)
+    await ctx.send("Data stored successfully." if res else "Error.")
+
 @chain(client.command(), wrapper_funcs)
 async def ud_update_mydata(ctx: commands.Context, key: str, value: str) -> None:
     '''
@@ -166,10 +179,23 @@ async def ud_update_mydata(ctx: commands.Context, key: str, value: str) -> None:
     '''
     ctx_author = helper.get_member(ctx.author.id)
     result = ud.set_user_data(str(ctx_author.id), key, value)
-    if result:
-        await ctx.send(f"Data updated successfully.")
-    else:
-        await ctx.send(f"Key not valid.")
+    await ctx.send(f"Data updated successfully." if result else f"Key not valid.")
+
+@chain(client.command(), commands.check(is_administrator), wrapper_funcs)
+async def ud_update_data(ctx: commands.Context, user: str, key: str, value: str) -> None:
+    '''
+    Updates the user data for a specific user.
+
+    @param ctx (commands.Context): The context object representing the invocation context.
+    @param user (str): The user to update the data for, mention using @
+    @param key (str): The key to update.
+    @param value (str): The value to update the key to.
+
+    @returns: None
+    '''
+    user = helper.parse_user(user)
+    result = ud.set_user_data(str(user.id), key, value)
+    await ctx.send(f"Data updated successfully." if result else f"Key not valid.")
 
 @chain(client.command(), commands.check(is_administrator), wrapper_funcs)
 async def ud_add_key(ctx: commands.Context, key: str) -> None:

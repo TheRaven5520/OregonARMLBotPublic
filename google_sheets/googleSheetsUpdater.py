@@ -16,7 +16,7 @@ pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', None)
 
 SHEET_NAME = "[Current] 2024 ARML Log (Responses)"
-rootDir = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/") + "/"
+rootDir = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/"
 
 def cs(n):
     string = ""
@@ -27,7 +27,7 @@ def cs(n):
 
 class google_sheet_updater:
     def __init__(self, helper):
-        self.client = gspread.authorize(ServiceAccountCredentials.from_json_keyfile_name(f'{rootDir}google_sheets_key.json',[ 'https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/drive.file' ]))
+        self.client = gspread.authorize(ServiceAccountCredentials.from_json_keyfile_name(f"{rootDir}google_sheets/google_sheets_key.json", ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']))
 
         self.SHEET = self.client.open(SHEET_NAME)
         self.helper = helper

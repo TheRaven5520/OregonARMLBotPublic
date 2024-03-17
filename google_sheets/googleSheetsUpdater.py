@@ -27,7 +27,7 @@ def cs(n):
 
 class google_sheet_updater:
     def __init__(self, helper):
-        self.client = gspread.authorize(ServiceAccountCredentials.from_json_keyfile_name(f"{rootDir}google_sheets/google_sheets_key.json", ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']))
+        self.client = gspread.authorize(ServiceAccountCredentials.from_json_keyfile_name(f"{DATA_DIR}gsdata/google_sheets_key.json", ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']))
 
         self.SHEET = self.client.open(SHEET_NAME)
         self.helper = helper

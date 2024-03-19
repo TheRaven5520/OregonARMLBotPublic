@@ -231,10 +231,10 @@ async def ud_remove_key(ctx: commands.Context, key: str) -> None:
 
 @chain(client.command(), commands.check(is_administrator), wrapper_funcs)
 async def get_emails(ctx: commands.Context, roles_to_match = "None", roles_to_exclude = "None", user_ids_to_match = "None", user_ids_to_exclude = "None", parent="False"):
-    roles_to_match = helper.parse_roles(roles_to_match)
-    roles_to_exclude = helper.parse_roles(roles_to_exclude)
-    user_ids_to_match = helper.parse_users(user_ids_to_match)
-    user_ids_to_exclude = helper.parse_users(user_ids_to_exclude)
+    roles_to_match = [role.id for role in helper.parse(roles_to_match)]
+    roles_to_exclude = [role.id for role in helper.parse(roles_to_exclude)]
+    user_ids_to_match = [user.id for user in helper.parse(user_ids_to_match)]
+    user_ids_to_exclude = [user.id for user in helper.parse(user_ids_to_exclude)]
     parent = helper.parse_boolean(parent)
 
     print(roles_to_match, roles_to_exclude, user_ids_to_match, user_ids_to_exclude, parent)

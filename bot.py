@@ -237,24 +237,13 @@ async def get_emails(ctx: commands.Context, roles_to_match = "None", roles_to_ex
     user_ids_to_exclude = [user.id for user in helper.parse(user_ids_to_exclude)]
     parent = helper.parse_boolean(parent)
 
-    print(roles_to_match, roles_to_exclude, user_ids_to_match, user_ids_to_exclude, parent)
-    print("------------")
     users = helper.get_users(roles_to_match, roles_to_exclude, user_ids_to_match, user_ids_to_exclude)
-    print(helper.get_users(roles_to_match, roles_to_exclude, user_ids_to_match, user_ids_to_exclude))
     users = [user.display_name for user in users]
 
-    print(users)
-
-    print("------------")
     emails_to_get = ["Email_"] + ([] if not parent else ["Parent Email_", "Parent Email 2_"])
     df = get_ud_data()
     df = df.loc[df.index.isin(users), emails_to_get]
 
-    print(df.index, df.columns)
-
-    print(df)
-
-    # flatten df values
     await ctx.send(f"```{' '.join(map(str, df.values.flatten()))}```")
 
 ##################################################################################

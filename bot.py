@@ -242,10 +242,10 @@ async def get_emails(ctx: commands.Context, roles_to_match = "None", roles_to_ex
     users = helper.get_users(roles_to_match, roles_to_exclude, user_ids_to_match, user_ids_to_exclude)
     print(helper.get_users(roles_to_match, roles_to_exclude, user_ids_to_match, user_ids_to_exclude))
     users = [user.display_name for user in users]
-    print("------------")
 
     print(users)
 
+    print("------------")
     emails_to_get = ["Email_"] + ([] if not parent else ["Parent Email_", "Parent Email 2_"])
     df = get_ud_data()
     df = df.loc[df.index.isin(users), emails_to_get]

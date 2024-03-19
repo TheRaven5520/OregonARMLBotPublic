@@ -238,8 +238,9 @@ async def get_emails(ctx: commands.Context, roles_to_match = "None", roles_to_ex
     parent = helper.parse_boolean(parent)
 
     print(roles_to_match, roles_to_exclude, user_ids_to_match, user_ids_to_exclude, parent)
-
+    print("------------")
     users = helper.get_users(roles_to_match, roles_to_exclude, user_ids_to_match, user_ids_to_exclude)
+    print("------------")
     print(helper.get_users(roles_to_match, roles_to_exclude, user_ids_to_match, user_ids_to_exclude))
     users = [user.display_name for user in users]
 

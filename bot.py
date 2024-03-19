@@ -244,6 +244,8 @@ async def get_emails(ctx: commands.Context, roles_to_match = "None", roles_to_ex
     df = get_ud_data()
     df = df.loc[df.index.isin(users), emails_to_get]
 
+    print(df)
+
     # flatten df values
     await ctx.send(f"```{' '.join(map(str, df.values.flatten()))}```")
 

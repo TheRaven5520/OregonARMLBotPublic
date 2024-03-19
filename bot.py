@@ -115,27 +115,17 @@ async def ud_mydata(ctx: commands.Context) -> None:
     @returns: None
     ''' 
     df = get_ud_data()
+
+    # get member & create if not already in DF
     ctx_author = helper.get_member(ctx.author.id)
     if ctx_author.display_name not in df.index:
         ud.create_user(str(ctx_author.id))
-        df.loc[ctx_author.display_name] = 'NA'
+        df.loc[ctx_author.display_name] = '-'
+        
+    print(ctx_author.display_name)
 
-    df = df.loc[[ctx_author.display_name]]
-
-    df = df.T
-
-    await ctx.send(f"```{df.to_string(index=True)}```")
-
-@chain(client.command(), commands.check(is_administrator), wrapper_funcs)
-async def ud_data(ctx: commands.Context) -> None:
-    '''
-    Retrieves all user data.
-
-    @param ctx (commands.Context): The context object representing the invocation context.
-
-    @returns: None
-    '''
-    df = get_ud_data()
+    # transpose 
+    df = df.T.loc[~df.columns.str.endswith('_'), ctx_author.display_name]
 
     await ctx.send(f"```{df.to_string(index=True)}```")
 
@@ -183,7 +173,7 @@ async def ud_update_mydata(ctx: commands.Context, key: str, value: str) -> None:
 
     @param ctx (commands.Context): The context object representing the invocation context.
     @param key (str): The key to update.
-    @param value (str): The value to update the key to.
+
 
     @returns: None
     '''
@@ -238,6 +228,21 @@ async def ud_remove_key(ctx: commands.Context, key: str) -> None:
         await ctx.send(f"Key removed successfully.")
     else:
         await ctx.send(f"Key not valid.")
+
+@chain(client.command(), commands.check(is_administrator), wrapper_funcs)
+async def get_emails(ctx: commands.Context, roles_to_match = "None", roles_to_exclude = "None", user_ids_to_match = "None", user_ids_to_exclude = "None", parent="False"):
+    roles_to_match = helper.parse_roles(roles_to_match)
+    roles_to_exclude = helper.parse_roles(roles_to_exclude)
+    user_ids_to_match = helper.parse_users(user_ids_to_match)
+    user_ids_to_exclude = helper.parse_users(user_ids_to_exclude)
+    parent = helper.parse_boolean(parent)
+
+    users = helper.get_users(roles_to_match, roles_to_exclude, user_ids_to_match, user_ids_to_exclude)
+    users = [user.display_name for user in users]
+
+    emails_to_get = ["Email"] + ([] if not parent else ["Parent Email"])
+    df = get_ud_data()
+    df = df.loc[df.index.isin(users), ["Email"]
 
 ##################################################################################
 # POTD USER COMMANDS
@@ -803,6 +808,7 @@ async def send(ctx, message, roles_to_match = "None", roles_to_exclude = "None",
     @param user_ids_to_match (list of @s, separated by spaces, in quotes): A list of user IDs to match.
     @param user_ids_to_exclude (list of @s, separated by spaces, in quotes): A list of user IDs to exclude.
     @param post_id (int): The ID of the post to check. Send a message to everyone who has not put a reaction on the post yet.
+    @param additional_eval (str): Additional code to evaluate in the message. Use `ping` to mention the user. Access to discord user object; e.g., {user.display_name} gives the user's display name.
 
     @returns: None
     '''
@@ -811,17 +817,10 @@ async def send(ctx, message, roles_to_match = "None", roles_to_exclude = "None",
     guild = ctx.guild 
     users = guild.members
 
-    if roles_to_match == "None": roles_to_match = None
-    if roles_to_exclude == "None": roles_to_exclude = None
-    if user_ids_to_match == "None": user_ids_to_match = None
-    if user_ids_to_exclude == "None": user_ids_to_exclude = None
-    if post_id == "None": post_id = None
-
-    if roles_to_match != None: roles_to_match = [int(role[3:-1]) for role in roles_to_match.strip().split(" ")]
-    if roles_to_exclude != None: roles_to_exclude = [int(role[3:-1]) for role in roles_to_exclude.strip().split(" ")]
-    if user_ids_to_match != None: user_ids_to_match = [int(user_id[2:-1]) for user_id in user_ids_to_match.strip().split(" ")]
-    if user_ids_to_exclude != None: user_ids_to_exclude = [int(user_id[2:-1]) for user_id in user_ids_to_exclude.strip().split(" ")]
-    if post_id != None: post_id = int(post_id)
+    roles_to_match = helper.parse_roles(roles_to_match)
+    roles_to_exclude = helper.parse_roles(roles_to_exclude)
+    user_ids_to_match = helper.parse_users(user_ids_to_match)
+    user_ids_to_exclude = helper.parse_users(user_ids_to_exclude)
 
     users = helper.get_users(roles_to_match, roles_to_exclude, user_ids_to_match, user_ids_to_exclude)
     if post_id != None:

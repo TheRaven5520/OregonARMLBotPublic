@@ -159,7 +159,7 @@ async def gs_update_ud(ctx: commands.Context) -> None:
         id = display_to_id[row['Name']]
         for key, val in row.items():
             if key=="Name": continue
-            if val=='-':
+            if val=='-' or val=="":
                 if id in ud.data and key in ud.data[id]: del ud.data[id][key]
                 continue
             ud.set_user_data(id, key, val)
@@ -244,10 +244,8 @@ async def get_emails(ctx: commands.Context, roles_to_match = "None", roles_to_ex
     df = get_ud_data()
     df = df.loc[df.index.isin(users), emails_to_get]
 
-    # concat all values in df to string (has multiple columns & rows)
-    dfstr = df.apply(lambda x: x.str.cat(sep=" "), axis=1)
-
-    await ctx.send(f"```{dfstr.to_string()}```")
+    # flatten df values
+    await ctx.send(f"```{' '.join(map(str, df.values.flatten()))}```")
 
 ##################################################################################
 # POTD USER COMMANDS

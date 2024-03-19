@@ -25,16 +25,6 @@ class user_data:
     # accessors 
     def data_as_df(self):
         return pd.DataFrame(self.data).fillna("-").astype(str).T
-    
-    def df_to_data(self, df, helper):
-        for index, row in df.iterrows():
-            print([index, row])
-        
-        # deepcopy data into olddata
-        # self.olddata = self.data.copy()
-        # self.data = {key:val for key, val in self.data.items() if val != "-"}
-        # self.store_data()
-        return True 
 
     # mutators
     def create_user(self, user_id):

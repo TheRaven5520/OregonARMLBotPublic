@@ -84,6 +84,7 @@ class discordHelper:
             if role_ids != None and any(role.id in role_ids for role in user.roles):
                 users.append(user)
                 continue
+        print("USERS", users)
         return users
 
     async def save_image_from_text(self, ctx):

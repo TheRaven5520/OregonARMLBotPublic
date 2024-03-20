@@ -717,7 +717,7 @@ async def listsched(ctx):
         if i['filename']: file = discord.File(f"{DATA_DIR}images/{i['filename']}")
         await ctx.send(dedent(f"""
                 **ID: {j}**
-                **Text**: {i['text']}
+                **Text**: \n{i['text']}
                 **Time**: {i['time']}
                 **Channel**: <#{i['channel']}>"""), file=file)
 

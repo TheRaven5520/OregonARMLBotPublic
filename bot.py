@@ -122,8 +122,6 @@ async def ud_mydata(ctx: commands.Context) -> None:
         ud.create_user(str(ctx_author.id))
         df.loc[ctx_author.display_name] = '-'
         
-    print(ctx_author.display_name)
-
     # transpose 
     df = df.T.loc[~df.columns.str.endswith('_'), ctx_author.display_name]
 
@@ -829,10 +827,10 @@ async def send(ctx, message, roles_to_match = "None", roles_to_exclude = "None",
     guild = ctx.guild 
     users = guild.members
 
-    roles_to_match = [int(role) for role in helper.parse_roles(roles_to_match)] if roles_to_match != "None" else []
-    roles_to_exclude = [int(role) for role in helper.parse_roles(roles_to_exclude)] if roles_to_exclude != "None" else []
-    user_ids_to_match = [int(user) for user in helper.parse_users(user_ids_to_match)] if user_ids_to_match != "None" else []
-    user_ids_to_exclude = [int(user) for user in helper.parse_users(user_ids_to_exclude)] if user_ids_to_exclude != "None" else []
+    roles_to_match = [int(role.id) for role in helper.parse_roles(roles_to_match)] if roles_to_match != "None" else []
+    roles_to_exclude = [int(role.id) for role in helper.parse_roles(roles_to_exclude)] if roles_to_exclude != "None" else []
+    user_ids_to_match = [int(user.id) for user in helper.parse_users(user_ids_to_match)] if user_ids_to_match != "None" else []
+    user_ids_to_exclude = [int(user.id) for user in helper.parse_users(user_ids_to_exclude)] if user_ids_to_exclude != "None" else []
 
     users = helper.get_users(roles_to_match, roles_to_exclude, user_ids_to_match, user_ids_to_exclude)
     if post_id != None:

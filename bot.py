@@ -231,20 +231,30 @@ async def ud_remove_key(ctx: commands.Context, key: str) -> None:
 
 @chain(client.command(), commands.check(is_administrator), wrapper_funcs)
 async def get_emails(ctx: commands.Context, roles_to_match = "None", roles_to_exclude = "None", user_ids_to_match = "None", user_ids_to_exclude = "None", parent="False"):
-    roles_to_match = [role.id for role in helper.parse(roles_to_match)]
-    roles_to_exclude = [role.id for role in helper.parse(roles_to_exclude)]
-    user_ids_to_match = [user.id for user in helper.parse(user_ids_to_match)]
-    user_ids_to_exclude = [user.id for user in helper.parse(user_ids_to_exclude)]
+    
+    roles_to_match = [role.id for role in helper.parse_roles(roles_to_match)] if roles_to_match != "None" else []
+    roles_to_exclude = [role.id for role in helper.parse_roles(roles_to_exclude)] if roles_to_exclude != "None" else []
+    user_ids_to_match = [user.id for user in helper.parse_users(user_ids_to_match)] if user_ids_to_match != "None" else []
+    user_ids_to_exclude = [user.id for user in helper.parse_users(user_ids_to_exclude)] if user_ids_to_exclude != "None" else []
     parent = helper.parse_boolean(parent)
 
     users = helper.get_users(roles_to_match, roles_to_exclude, user_ids_to_match, user_ids_to_exclude)
     users = [user.display_name for user in users]
+    print(users)
 
     emails_to_get = ["Email_"] + ([] if not parent else ["Parent Email_", "Parent Email 2_"])
     df = get_ud_data()
     df = df.loc[df.index.isin(users), emails_to_get]
-
-    await ctx.send(f"```{' '.join(map(str, df.values.flatten()))}```")
+    dfstr = set(map(str, df.values.flatten()))
+    
+    str_send = ""
+    for em in dfstr:
+        if len(str_send + em) >= 1800:
+            await ctx.send(f"```{str_send}```")
+            str_send = ""
+        str_send += em + ' '
+    if str_send != "":
+        await ctx.send(f"```{str_send}```")
 
 ##################################################################################
 # POTD USER COMMANDS
@@ -819,10 +829,10 @@ async def send(ctx, message, roles_to_match = "None", roles_to_exclude = "None",
     guild = ctx.guild 
     users = guild.members
 
-    roles_to_match = helper.parse_roles(roles_to_match)
-    roles_to_exclude = helper.parse_roles(roles_to_exclude)
-    user_ids_to_match = helper.parse_users(user_ids_to_match)
-    user_ids_to_exclude = helper.parse_users(user_ids_to_exclude)
+    roles_to_match = [int(role) for role in roles_to_match.split(' ')] if roles_to_match != "None" else []
+    roles_to_exclude = [int(role) for role in roles_to_exclude.split(' ')] if roles_to_exclude != "None" else []
+    user_ids_to_match = [int(user) for user in user_ids_to_match.split(' ')] if user_ids_to_match != "None" else []
+    user_ids_to_exclude = [int(user) for user in user_ids_to_exclude.split(' ')] if user_ids_to_exclude != "None" else []
 
     users = helper.get_users(roles_to_match, roles_to_exclude, user_ids_to_match, user_ids_to_exclude)
     if post_id != None:

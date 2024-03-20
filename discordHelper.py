@@ -74,6 +74,7 @@ class discordHelper:
         raise Exception("Post not found.")
 
     def get_users(self, role_ids = None, not_role_ids = None, member_ids = None, not_member_ids = None):
+        print(role_ids, not_role_ids, member_ids, not_member_ids)
         users = []
         for user in self.guild().members:
             if not_member_ids != None and user.id in not_member_ids: continue 
@@ -84,7 +85,6 @@ class discordHelper:
             if role_ids != None and any(role.id in role_ids for role in user.roles):
                 users.append(user)
                 continue
-        print("RETURNING: ", users[:5])
         return users
 
     async def save_image_from_text(self, ctx):
@@ -104,14 +104,14 @@ class discordHelper:
         return self.guild().get_role(int(role[3:-1]))
     def parse_roles(self, roles):
         if roles == "None": return None
-        return [self.parse_role(role) for role in roles.split(" ")]
+        return [self.parse_role(role) for role in roles.split(" ") if role != '']
 
     def parse_user(self, user):
         if user == "None": return None
         return self.get_member(int(user[2:-1]))
     def parse_users(self, users):
         if users == "None": return None
-        return [self.parse_user(user) for user in users.split(" ")]
+        return [self.parse_user(user) for user in users.split(" ") if user != '']
 
     def parse_channel(self, channel):
         if channel == "None": return None

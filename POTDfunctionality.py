@@ -8,7 +8,7 @@ class Person:
         self.num_attempts = num_attempts
         self.grade = grade
         self.id = person_id
-        self.responses = responses
+        self.responses = responses[:]
 
     def to_load(self):
         return {'id': self.id, 'num_attempts': self.num_attempts, 'grade': self.grade, 'responses': self.responses}

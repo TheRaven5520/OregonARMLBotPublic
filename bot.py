@@ -812,6 +812,7 @@ async def send(ctx, message, roles_to_match = "None", roles_to_exclude = "None",
     Sends a message to all users that match the specified criteria.
 
     @param ctx (commands.Context): The context of the command.
+    @param message (str): The message to send.
     @param roles_to_match (list of @s, separated by spaces, in quotes): A list of role IDs to match.
     @param roles_to_exclude (list of @s, separated by spaces, in quotes): A list of role IDs to exclude.
     @param user_ids_to_match (list of @s, separated by spaces, in quotes): A list of user IDs to match.

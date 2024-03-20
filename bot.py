@@ -715,6 +715,11 @@ async def listsched(ctx):
     for j, i in potd_driver.scheduled_messages.items():
         file = None
         if i['filename']: file = discord.File(f"{DATA_DIR}images/{i['filename']}")
+        print(dedent("""
+                **ID: {0}**
+                **Text**: \n{1}
+                **Time**: {2}
+                **Channel**: <#{3}>""").format(j, i['text'], i['time'], i['channel']))
         await ctx.send(dedent("""
                 **ID: {0}**
                 **Text**: \n{1}

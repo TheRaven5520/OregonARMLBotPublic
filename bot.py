@@ -716,10 +716,10 @@ async def listsched(ctx):
         file = None
         if i['filename']: file = discord.File(f"{DATA_DIR}images/{i['filename']}")
         await ctx.send(dedent(f"""
-                **ID: {j}**
-                **Text**: \n{i['text']}
-                **Time**: {i['time']}
-                **Channel**: <#{i['channel']}>"""), file=file)
+                **ID: {0}**
+                **Text**: \n{1}
+                **Time**: {2}
+                **Channel**: <#{3}>""").format(j, i['text'], i['time'], i['channel']), file=file)
 
 @chain(client.command(), commands.check(is_admin_channel), wrapper_funcs)
 async def remsched(ctx, smesid):

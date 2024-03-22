@@ -500,7 +500,10 @@ async def potd_upd_ans(ctx, problem_id, answer):
     @param answer: new answer, "None" or (int)
 
     @returns: None'''
-    result, text = potd_driver.season.set_answer(problem_id, answer)
+    result, text, people_updated = potd_driver.season.set_answer(problem_id, answer)
+    for i, j in people_updated: # i = person_id (str), j = new score (boolean)
+        member = helper.get_member(int(i))
+        await member.send(f"Your answer to problem {problem_id} has been updated to {1 if j else 0}.")
     await ctx.send(text)
 
 @chain(client.command(), commands.check(is_admin_channel), wrapper_funcs)

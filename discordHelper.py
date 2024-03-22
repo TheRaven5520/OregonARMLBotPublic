@@ -52,9 +52,6 @@ class discordHelper:
             print(f"Member {member_id} not found")
             raise Exception(f"Member {member_id} not found")
         return member
-    
-    def get_member_fromdisplayname(self, displayname):
-        return self.client.get_user()
 
     async def get_post(self, post_id, channel_id = None):
         if channel_id is not None:

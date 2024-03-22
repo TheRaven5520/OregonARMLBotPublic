@@ -67,11 +67,9 @@ class Problem:
         person = self.get_person(person_id)
         if not person:
             return False, f"Person {person_id} not found.", None
-        if max_out:
-            person.grade = max(person.grade, grade)
-        else:
-            person.grade = grade
-        return True, f"Person {person_id}'s grade updated to {person.grade}.", person
+        res = person.grade != grade 
+        person.grade = max(person.grade, grade) if max_out else grade
+        return res, f"Person {person_id}'s grade updated to {person.grade}.", person
 
     def set_ans(self, answer: str):
         self.answer = answer
@@ -164,11 +162,12 @@ class Season:
         problem = self.get_problem(problem_id)
         if not problem: return False, f"Problem {problem_id} not found."
         result, text = problem.set_ans(answer)
+        people_updated = []
         if helper.parse_type(float, answer) is not None:
             for person_id, person in problem.persons.items():
                 correct_answer = any(float(response) == float(answer) for response in person.responses)
-                problem.set_grade(person_id, 1 if correct_answer else 0, False)
-        return result, text
+                [people_updated.append((person_id, correct_answer)) for res, _, _ in [problem.set_grade(person_id, 1 if correct_answer else 0, False)] if res]
+        return result, text, people_updated
     
     def set_time(self, problem_id: str, start_time: str, end_time: str):
         problem = self.get_problem(problem_id)

@@ -97,11 +97,18 @@ def get_ud_data():
     df = ud.data_as_df()
     df = pd.DataFrame({key: df.get(key, '-') for key in ud.keys})
 
+    # add year_role users if not alr in by comparing useR_ids 
+    users_to_add = [str(user.id) for user in helper.get_users([constants["year_role"]]) if str(user.id) not in df.index]
+    df = pd.concat([df, pd.DataFrame(index=users_to_add, columns=df.columns).fillna("-")], axis=0) 
+
+    # add _Competitor column mapping user ids --> id_to_role[user.id]
+    id_to_role = {str(user.id): (1 if any(constants["year_role"] == role.id for role in user.roles) else 0) for user in helper.guild().members}
+    df["_Competitor"] = df.index.map(lambda x : id_to_role.get(x, x))
+    df = df[['_Competitor'] + [col for col in df.columns if col != '_Competitor']]
+
+    # make display_names
     member_ids = [member.id for member in helper.guild().members]
     df.index = [helper.guild().get_member(int(index)).display_name for index in df.index if int(index) in member_ids]
-
-    users_to_add = [user.display_name for user in helper.get_users([constants["year_role"]]) if user.display_name not in df.index]
-    df = pd.concat([df, pd.DataFrame(index=users_to_add, columns=df.columns).fillna("-")])
 
     return df
 
@@ -138,6 +145,7 @@ async def ud_update_gs(ctx: commands.Context) -> None:
     '''
     df = get_ud_data()
     df = df.reset_index().rename(columns={"index": "Name"})
+
     gs_helper.post_df_to_sheet(df, "User Data")
     await ctx.send(f"Data updated successfully.")
 
@@ -151,7 +159,7 @@ async def gs_update_ud(ctx: commands.Context) -> None:
     @returns: None
     '''
     gs_df = gs_helper.get_df_fromsheet("User Data")
-    users = helper.guild().members 
+    users = helper.guild().members
     display_to_id = {user.display_name: str(user.id) for user in users}
     for _, row in gs_df.iterrows():
         id = display_to_id[row['Name']]

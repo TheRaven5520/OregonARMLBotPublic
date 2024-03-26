@@ -71,7 +71,6 @@ class discordHelper:
         raise Exception("Post not found.")
 
     def get_users(self, role_ids = None, not_role_ids = None, member_ids = None, not_member_ids = None):
-        print(role_ids, not_role_ids, member_ids, not_member_ids)
         users = []
         for user in self.guild().members:
             if not_member_ids != None and user.id in not_member_ids: continue 

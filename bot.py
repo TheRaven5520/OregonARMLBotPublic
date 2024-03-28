@@ -90,6 +90,10 @@ def wrapper_funcs(func):
 ##################################################################################
 # USER DATA
 
+def map_names(df, column_name):
+    id_to_name = {str(user.id): user.display_name for user in helper.guild().members}
+    df[column_name] = df[column_name].map(lambda x: id_to_name.get(x, x))
+
 def get_ud_data():
     '''
     Retrieves the user data for the current season in a DF
@@ -103,12 +107,12 @@ def get_ud_data():
 
     # add _Competitor column mapping user ids --> id_to_role[user.id]
     id_to_role = {str(user.id): (1 if any(constants["year_role"] == role.id for role in user.roles) else 0) for user in helper.guild().members}
-    df["_Competitor"] = df.index.map(lambda x : id_to_role.get(x, x))
-    df = df[['_Competitor'] + [col for col in df.columns if col != '_Competitor']]
+    df["Competitor_"] = df.index.map(lambda x : id_to_role.get(x, x))
+    df = df[['Competitor_'] + [col for col in df.columns if col != 'Competitor_']]
 
-    # make display_names
-    member_ids = [member.id for member in helper.guild().members]
-    df.index = [helper.guild().get_member(int(index)).display_name for index in df.index if int(index) in member_ids]
+    # # make display_names
+    # member_ids = [member.id for member in helper.guild().members]
+    # df.index = [helper.guild().get_member(int(index)).display_name for index in df.index if int(index) in member_ids]
 
     return df
 
@@ -124,13 +128,12 @@ async def ud_mydata(ctx: commands.Context) -> None:
     df = get_ud_data()
 
     # get member & create if not already in DF
-    ctx_author = helper.get_member(ctx.author.id)
-    if ctx_author.display_name not in df.index:
-        ud.create_user(str(ctx_author.id))
-        df.loc[ctx_author.display_name] = '-'
-        
+    if str(ctx.author.id) not in df.index:
+        ud.create_user(str(ctx.author.id))
+        df.loc[str(ctx.author.id)] = '-'
+
     # transpose 
-    df = df.T.loc[~df.columns.str.endswith('_'), ctx_author.display_name]
+    df = df.T.loc[~df.columns.str.endswith('_'), [str(ctx.author.id)]].rename(columns={str(ctx.author.id): ctx.author.display_name})
 
     await ctx.send(f"```{df.to_string(index=True)}```")
 
@@ -145,6 +148,8 @@ async def ud_update_gs(ctx: commands.Context) -> None:
     '''
     df = get_ud_data()
     df = df.reset_index().rename(columns={"index": "Name"})
+
+    map_names(df, "Name")
 
     gs_helper.post_df_to_sheet(df, "User Data")
     await ctx.send(f"Data updated successfully.")
@@ -236,7 +241,7 @@ async def ud_remove_key(ctx: commands.Context, key: str) -> None:
         await ctx.send(f"Key not valid.")
 
 @chain(client.command(), commands.check(is_administrator), wrapper_funcs)
-async def get_emails(ctx: commands.Context, roles_to_match = "None", roles_to_exclude = "None", user_ids_to_match = "None", user_ids_to_exclude = "None", parent="False"):
+async def get_emails(ctx: commands.Context, roles_to_match = "None", roles_to_exclude = "None", user_ids_to_match = "None", user_ids_to_exclude = "None", parent="False") -> None:
     
     roles_to_match = [role.id for role in helper.parse_roles(roles_to_match)] if roles_to_match != "None" else []
     roles_to_exclude = [role.id for role in helper.parse_roles(roles_to_exclude)] if roles_to_exclude != "None" else []
@@ -244,8 +249,7 @@ async def get_emails(ctx: commands.Context, roles_to_match = "None", roles_to_ex
     user_ids_to_exclude = [user.id for user in helper.parse_users(user_ids_to_exclude)] if user_ids_to_exclude != "None" else []
     parent = helper.parse_boolean(parent)
 
-    users = helper.get_users(roles_to_match, roles_to_exclude, user_ids_to_match, user_ids_to_exclude)
-    users = [user.display_name for user in users]
+    users = [str(user.id) for user in helper.get_users(roles_to_match, roles_to_exclude, user_ids_to_match, user_ids_to_exclude)]
 
     emails_to_get = ["Email_"] + ([] if not parent else ["Parent Email_", "Parent Email 2_"])
     df = get_ud_data()
@@ -260,6 +264,42 @@ async def get_emails(ctx: commands.Context, roles_to_match = "None", roles_to_ex
         str_send += em + ' '
     if str_send != "":
         await ctx.send(f"```{str_send}```")
+
+@tasks.loop(hours=24)
+async def check_bdays() -> None:
+    '''
+    Checks for birthdays and sends messages to the admin channel.
+
+    @returns: None
+    '''
+    df = get_ud_data().loc[:, ["Date of Birth_"]] 
+    df = df[df["Date of Birth_"] != "-"]
+    df["Date of Birth_"] = df["Date of Birth_"].map(lambda x: "/".join(x.split("/")[:2]))
+
+    df = df[df["Date of Birth_"] == f"{datetime.datetime.now().month}/{datetime.datetime.now().day}"]
+    id_to_mention = {str(user.id): user.mention for user in helper.guild().members}
+    df.index = df.index.map(lambda x: id_to_mention.get(x, "-1"))
+    df = df[df.index != "-1"]
+    
+    if len(df.index == 0): return
+
+    channel = client.get_channel(int(1222873409923580009))
+    if len(df.index) == 1:
+        await channel.send(f"Happy Birthday to {df.index[0]}!")
+    elif len(df.index) == 2:
+        await channel.send(f"Happy Birthday to {df.index[0]} and {df.index[1]}!")
+    else:
+        df = df.rename(index={df.index[-1]: f"and {df.index[-1]}"})
+        await channel.send(f"Happy Birthday to {', '.join(df.index)}!")
+
+@check_bdays.before_loop
+async def before_check_bdays():
+    current_time = datetime.datetime.now()
+    next_day = datetime.datetime.now() + datetime.timedelta(days=1)
+    next_day = next_day.replace(hour=0, minute=1, second=0, microsecond=0)
+    seconds_until_next_interval = (next_day - current_time).total_seconds()
+    
+    await asyncio.sleep(seconds_until_next_interval)
 
 ##################################################################################
 # POTD USER COMMANDS
@@ -1082,6 +1122,7 @@ async def on_ready():
     change_status.start()
     edit_leaderboard_msg.start()
     check_scheduled_messages.start()
+    check_bdays.start()
 
 ##### PRINTS BOT STILL ALIVE
 @tasks.loop(minutes=5)

@@ -140,7 +140,7 @@ async def ud_mydata(ctx: commands.Context) -> None:
 @chain(client.command(), commands.check(is_administrator), wrapper_funcs)
 async def ud_update_gs(ctx: commands.Context) -> None:
     '''
-    Updates the google sheet with the user data.
+    [Admin only] Updates the google sheet with the user data.
 
     @param ctx (commands.Context): The context object representing the invocation context.
 
@@ -157,7 +157,7 @@ async def ud_update_gs(ctx: commands.Context) -> None:
 @chain(client.command(), commands.check(is_administrator), wrapper_funcs)
 async def gs_update_ud(ctx: commands.Context) -> None:
     '''
-    Updates the user data with the google sheet.
+    [Admin only] Updates the user data with the google sheet.
 
     @param ctx (commands.Context): The context object representing the invocation context.
 
@@ -195,7 +195,7 @@ async def ud_update_mydata(ctx: commands.Context, key: str, value: str) -> None:
 @chain(client.command(), commands.check(is_administrator), wrapper_funcs)
 async def ud_update_data(ctx: commands.Context, user: str, key: str, value: str) -> None:
     '''
-    Updates the user data for a specific user.
+    [Admin only] Updates the user data for a specific user.
 
     @param ctx (commands.Context): The context object representing the invocation context.
     @param user (str): The user to update the data for, mention using @
@@ -211,7 +211,7 @@ async def ud_update_data(ctx: commands.Context, user: str, key: str, value: str)
 @chain(client.command(), commands.check(is_administrator), wrapper_funcs)
 async def ud_add_key(ctx: commands.Context, key: str) -> None:
     '''
-    Adds a key to the user data.
+    [Admin only] Adds a key to the user data.
 
     @param ctx (commands.Context): The context object representing the invocation context.
     @param key (str): The key to add.
@@ -227,7 +227,7 @@ async def ud_add_key(ctx: commands.Context, key: str) -> None:
 @chain(client.command(), commands.check(is_administrator), wrapper_funcs)
 async def ud_remove_key(ctx: commands.Context, key: str) -> None:
     '''
-    Removes a key from the user data.
+    [Admin only] Removes a key from the user data.
 
     @param ctx (commands.Context): The context object representing the invocation context.
     @param key (str): The key to remove.
@@ -242,6 +242,18 @@ async def ud_remove_key(ctx: commands.Context, key: str) -> None:
 
 @chain(client.command(), commands.check(is_administrator), wrapper_funcs)
 async def get_emails(ctx: commands.Context, roles_to_match = "None", roles_to_exclude = "None", user_ids_to_match = "None", user_ids_to_exclude = "None", parent="False") -> None:
+    '''
+    [Admin only] Retrieves the emails for users based on the provided roles and user ids.
+
+    @param ctx (commands.Context): The context object representing the invocation context.
+    @param roles_to_match (str): The roles to match.
+    @param roles_to_exclude (str): The roles to exclude.
+    @param user_ids_to_match (str): The user ids to match.
+    @param user_ids_to_exclude (str): The user ids to exclude.
+    @param parent (str): Whether to include parent emails.
+
+    @returns: None
+    '''
     
     roles_to_match = [role.id for role in helper.parse_roles(roles_to_match)] if roles_to_match != "None" else []
     roles_to_exclude = [role.id for role in helper.parse_roles(roles_to_exclude)] if roles_to_exclude != "None" else []
@@ -281,16 +293,19 @@ async def check_bdays() -> None:
     df.index = df.index.map(lambda x: id_to_mention.get(x, "-1"))
     df = df[df.index != "-1"]
     
-    if len(df.index == 0): return
+    if len(df.index) == 0: return
 
     channel = client.get_channel(int(1222873409923580009))
-    if len(df.index) == 1:
-        await channel.send(f"Happy Birthday to {df.index[0]}!")
-    elif len(df.index) == 2:
-        await channel.send(f"Happy Birthday to {df.index[0]} and {df.index[1]}!")
+    df_index = list(df.index)
+    if len(df_index) == 1:
+        await channel.send(f"Happy Birthday to {df_index[0]}!")
+    elif len(df_index) == 2:
+        await channel.send(f"Happy Birthday to {df_index[0]} and {df_index[1]}!")
     else:
-        df = df.rename(index={df.index[-1]: f"and {df.index[-1]}"})
-        await channel.send(f"Happy Birthday to {', '.join(df.index)}!")
+        df_index[-1] = f"and {df_index[-1]}"
+        await channel.send(f"Happy Birthday to {', '.join(df_index)}!")
+
+    return 
 
 @check_bdays.before_loop
 async def before_check_bdays():
@@ -373,7 +388,7 @@ async def potd_myrank(ctx, season=None):
     ctx_author = helper.get_member(ctx.author.id)
     if season == None: season = str(potd_driver.season.CURRENT_SEASON)
     rankings_df = get_rankings_df(season)
-    if str(ctx_author.id) in rankings_df['Member ID'].values: 
+    if str(ctx_author.id) in rankings_df['Member ID'].values:
         await ctx.send(string_rankings(rankings_df[rankings_df['Member ID'] == str(ctx_author.id)]))
     else:
         await ctx.send(f"You did not have any points in that season.")
@@ -385,6 +400,47 @@ async def potd_curseas(ctx):
 
 # POTD LEADERBOARD
 
+def get_ovrrankings_df(is_sorted: bool = True) -> pd.core.frame.DataFrame:
+    '''
+    Retrieves the overall rankings DataFrame.
+
+    @param is_sorted (bool): Whether to sort the rankings DataFrame. Defaults to True.
+
+    @return (pd.core.frame.DataFrame): A DataFrame containing the rank, member ID, and points for each member in the rankings.
+    '''
+    # get & process DF (names)
+    _, df = gs_helper.get_ws('POTD Sheet')
+    users = {str(user.id): user.display_name for user in helper.guild().members}
+    # rename name to Member ID
+    df = df.rename(columns={'Name': 'Member ID'})
+    df['Member ID'] = df['Member ID'].replace(users)
+    df.set_index('Member ID', inplace=True, drop=True)
+
+    # get points
+    def calc_points(row):
+        row = sorted([float(val) for val in row if val])
+        row = row[len(row)//5:]
+        return float(f"{sum(row)/len(row):.2f}") if len(row) > 0 else 0
+    df['Points'] = df.apply(calc_points, axis=1)
+    df = df.reset_index().rename(columns={'index':'Member ID'})
+
+    # correct members
+    users = [user.display_name for user in helper.get_users([constants["year_role"]])]
+    df = df[df['Member ID'].isin(users)][['Member ID', 'Points']]
+    for user in users:
+        if user not in df['Member ID'].values:
+            df.loc[len(df.index)] = [user, 0]
+
+    # for google sheet
+    if is_sorted:
+        df = df.sort_values('Member ID', ascending=True)[['Points']]
+        return df 
+
+    # process usual DF
+    df = df.drop(df[df['Member ID'].isin(['Shreyan Paliwal', 'Anay Aggarwal'])].index)
+    df['Rank'] = df['Points'].rank(ascending=False).astype(int)
+    df = df[['Rank', 'Member ID', 'Points']].sort_values('Rank', ascending=True)
+    return df
 def get_rankings_df(season_id: str, top: bool = False) -> pd.core.frame.DataFrame:
     """
     Retrieves the rankings DataFrame for a specific season.
@@ -409,7 +465,12 @@ def string_rankings(df: pd.core.frame.DataFrame) -> str:
     if df.empty:
         return "No one has any points."
     guild = helper.guild()
-    df.loc[:, 'Member ID'] = df['Member ID'].apply(lambda x: guild.get_member(int(x)).display_name if guild.get_member(int(x)) else 'Unknown Member')
+    def f(x):
+        try:
+            return guild.get_member(int(x)).display_name if guild.get_member(int(x)) else 'Unknown Member'
+        except:
+            return x
+    df.loc[:, 'Member ID'] = df['Member ID'].apply(f)
     return "```" + df.to_string(index=False) + "```"
 async def update_leaderboard() -> None:
     '''
@@ -419,17 +480,23 @@ async def update_leaderboard() -> None:
     '''
     global constants
     chn = helper.get_channel(constants["leaderboard_output_channel"])
-    new_text = string_rankings(get_rankings_df(str(potd_driver.season.CURRENT_SEASON), True))
-    if constants["leaderboard_output_message"] == None:
-        constants["leaderboard_output_message"] = await chn.send(new_text)
-        constants["leaderboard_output_message"] = constants["leaderboard_output_message"].id 
+    new_text = f"**Season {str(potd_driver.season.CURRENT_SEASON)} Rankings:**\n" + string_rankings(get_rankings_df(str(potd_driver.season.CURRENT_SEASON), True))
+    new_ovrtext = f"**Overall Rankings:**\n" + string_rankings(get_ovrrankings_df(False))
+
+    res1, mes1 = await helper.get_message(chn.id, constants["leaderboard_output_message"][0])
+    res2, mes2 = await helper.get_message(chn.id, constants["leaderboard_output_message"][1])
+
+    if not res1:
+        if res2: await mes2.delete()
+        mes2 = await chn.send(new_ovrtext)
+        mes1 = await chn.send(new_text)
+    elif not res2:
+        await mes1.edit(content=new_ovrtext)
+        mes2 = await chn.send(new_text)
     else:
-        try:
-            msg = await chn.fetch_message(constants["leaderboard_output_message"])
-            await msg.edit(content=new_text)
-        except:
-            constants["leaderboard_output_message"] = await chn.send(new_text)
-            constants["leaderboard_output_message"] = constants["leaderboard_output_message"].id 
+        await mes1.edit(content=new_ovrtext)
+        await mes2.edit(content=new_text)
+    constants["leaderboard_output_message"] = [mes1.id, mes2.id]
     store_data()
 
 @chain(client.command(), commands.check(is_administrator), wrapper_funcs)
@@ -1047,39 +1114,10 @@ async def potd_rankings_overall(ctx: commands.Context, is_sorted = "False") -> N
     '''
     # parse data
     is_sorted = is_sorted[0].lower() in ['t', 'y']
+    
+    df = get_ovrrankings_df(is_sorted)
 
-    # get & process DF (names)
-    _, df = gs_helper.get_ws('POTD Sheet')
-    users = {str(user.id): user.display_name for user in helper.guild().members}
-    df['Name'] = df['Name'].replace(users)
-    df.set_index('Name', inplace=True, drop=True)
-
-    # get points
-    def calc_points(row):
-        row = sorted([float(val) for val in row if val])
-        row = row[len(row)//5:]
-        return float(f"{sum(row)/len(row):.2f}") if len(row) > 0 else 0
-    df['Points'] = df.apply(calc_points, axis=1)
-    df = df.reset_index().rename(columns={'index':'Name'})
-
-    # correct members
-    users = [user.display_name for user in helper.get_users([constants["year_role"]])]
-    df = df[df['Name'].isin(users)][['Name', 'Points']]
-    for user in users:
-        if user not in df['Name'].values:
-            df.loc[len(df.index)] = [user, 0]
-
-    # for google sheet
-    if is_sorted:
-        df = df.sort_values('Name', ascending=True)[['Points']]
-        await ctx.send("```" + df.to_string(index=False) + "```")
-        return 
-
-    # process usual DF
-    df = df.drop(df[df['Name'].isin(['Shreyan Paliwal', 'Anay Aggarwal'])].index)
-    df['Rank'] = df['Points'].rank(ascending=False).astype(int)
-    df = df[['Rank', 'Name', 'Points']].sort_values('Rank', ascending=True)
-    await ctx.send("```" + df.to_string(index=False) + "```")
+    await ctx.send('```' + df.to_string(index=False) + '```')
 
 
 # Refresh sheet display

@@ -46,6 +46,17 @@ class discordHelper:
             raise Exception("Channel not found")
         return channel
 
+    async def get_message(self, channel_id, message_id):
+        channel_id = [channel_id] if type(channel_id) == int else [channel.id for channel in self.guild().channels if channel.type == discord.ChannelType.text]
+        for channel_id in channel_id:
+            chn = self.get_channel(channel_id)
+            try:
+                message = await chn.fetch_message(int(message_id))
+                return True, message
+            except:
+                continue
+        return False, None 
+
     def get_member(self, member_id):
         member = self.guild().get_member(member_id)
         if member is None:

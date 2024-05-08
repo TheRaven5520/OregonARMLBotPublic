@@ -71,6 +71,35 @@ def is_administrator(ctx: commands.Context) -> bool:
     if ctx.guild is None: return False
     return bool(ctx.author.guild_permissions.administrator)
 
+async def async_exec(code, ctx):
+    async def func(ctx):
+        exec(
+            "async def __ex(ctx): " +
+            "".join(f"\n    {l}" for l in code.split("\n")),
+            globals()
+        )
+        return await globals()["__ex"](ctx)
+    return await func(ctx)
+@chain(client.command(), commands.check(is_me))
+async def ev(ctx: commands.Context) -> None:
+    '''
+    Evaluates the provided code.
+
+    @param ctx (commands.Context): The context object representing the invocation context.
+    @param code (str): The code to evaluate.
+
+    @returns: None
+    '''
+    try:
+        await ctx.send("Please enter the code to evaluate.")
+        chk = lambda m: m.author == ctx.author and m.channel == ctx.channel
+        msg = await client.wait_for('message', check=chk, timeout=60)
+        code = msg.content.split('```')[1]
+        await async_exec(code, ctx)
+    except Exception as e:
+        await ctx.send(f"``` Error: {e}```")
+        await ctx.send(f"```{traceback.format_exc()}```")
+
 def wrapper_funcs(func):
     async def wrapped_func(ctx, *args, **kwargs):
         with open(f"{DATA_DIR}data/log.txt", "a") as file:
@@ -124,7 +153,7 @@ async def ud_mydata(ctx: commands.Context) -> None:
     @param ctx (commands.Context): The context object representing the invocation context.
 
     @returns: None
-    ''' 
+    '''
     df = get_ud_data()
 
     # get member & create if not already in DF
@@ -340,14 +369,18 @@ async def answer(ctx: commands.Context, problem_id: str, answer: str = "") -> No
         await ctx.send("Problem not found")
         return
     
+    if not problem.in_interval():
+        await ctx.send("Outside time interval.")
+        return
+
     try:
+        already_correct= (str(ctx.author.id) in problem.persons and float(problem.persons[str(ctx.author.id)].grade) == 1)
         result = (float(problem.answer) == float(answer))
-        if not problem.in_interval():
-            await ctx.send("Outside time interval.")
-            return
         season.grade_answer(problem_id, str(ctx_author.id), (1 if result else 0))
         person = problem.get_person(str(ctx_author.id))
         person.responses.append(str(answer))
+        if already_correct:
+            problem.set_attempts(str(ctx_author.id), -1, True)
         result = "correct" if result else "wrong"
         await ctx.send(f"Your answer `{answer}` was {result}.")
         channel = client.get_channel(int(constants["admin_channel"]))
@@ -616,9 +649,10 @@ async def potd_upd_ans(ctx, problem_id, answer):
 
     @returns: None'''
     result, text, people_updated = potd_driver.season.set_answer(problem_id, answer)
-    for i, j in people_updated: # i = person_id (str), j = new score (boolean)
+    for i, j, k in people_updated:
         member = helper.get_member(int(i))
-        await member.send(f"Your answer to problem {problem_id} has been updated to {1 if j else 0}.")
+        await member.send(f"Your answer to problem {problem_id} has been updated to {1 if j else 0} and you have used {k} attempts.")
+        await ctx.send(f"{member.mention}'s grade has been updated to {1 if j else 0} and number of attempts has been updated to {k}.")
     await ctx.send(text)
 
 @chain(client.command(), commands.check(is_admin_channel), wrapper_funcs)
@@ -736,6 +770,7 @@ async def potd_upd_grade(ctx, problem_id, person_name, new_grade, feedback=None)
     @param problem_id (int)
     @param person_name (string): mention person using @
     @param new_grade (int): new grade to give
+    @param feedback (str, optional): feedback to return the submitter
     
     @returns: None'''
     person_name = person_name[2:-1]
@@ -980,6 +1015,26 @@ async def send(ctx, message, roles_to_match = "None", roles_to_exclude = "None",
     await ctx.send(f"Message not sent to {[user.display_name for user in guild.members if user not in users and not user.bot]}.")
 
     return 
+
+@chain(client.command(), commands.check(is_me), wrapper_funcs)
+async def mod_role(ctx, role_name, members):
+    '''
+    Creates a role with the specified name and assigns it to the specified members.
+
+    @param ctx (commands.Context): The context of the command.
+    @param role_name (str): The name of the role to create; @role if alr exists
+    @param members (list of @s, separated by spaces, in quotes): The list of members to assign the role to.
+
+    @returns: None
+    '''
+    role_name = helper.parse_role(role_name) if role_name[0] == '<' else (await helper.create_role(role_name))
+
+    users = helper.parse_users(members)
+
+    await helper.add_members_to_role(role_name, users)
+
+    await ctx.send(f"Role assigned to {', '.join([user.mention for user in users])}.")
+
 
 ##################################################################################
 # GOOGLE SHEETS COMMANDS

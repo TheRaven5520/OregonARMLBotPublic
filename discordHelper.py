@@ -104,6 +104,16 @@ class discordHelper:
         else:
             return None
 
+    ################ MODIFY
+
+    async def create_role(self, name):
+        return await self.guild().create_role(name = name)
+
+    async def add_members_to_role(self, role, members):
+        for member in members:
+            await member.add_roles(role)
+        return True
+
     ################ INPUT PARSERS
 
     def parse_role(self, role):

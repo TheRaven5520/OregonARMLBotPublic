@@ -57,17 +57,20 @@ class Problem:
         person = self.get_person(person_id)
         if not person:
             return False, f"Person {person_id} not found.", None
+        res = None
         if add:
             person.num_attempts += num_attempts
+            res = num_attempts != 0
         else:
+            res = person.num_attempts != num_attempts
             person.num_attempts = num_attempts
-        return True, f"Person {person_id}'s attempts updated to {person.num_attempts}.", person
+        return res, f"Person {person_id}'s attempts updated to {person.num_attempts}.", person
         
     def set_grade(self, person_id: str, grade: float, max_out: bool = True):
         person = self.get_person(person_id)
         if not person:
             return False, f"Person {person_id} not found.", None
-        res = person.grade != grade 
+        res = person.grade != grade
         person.grade = max(person.grade, grade) if max_out else grade
         return res, f"Person {person_id}'s grade updated to {person.grade}.", person
 
@@ -158,15 +161,34 @@ class Season:
         })
         return True, "Answer added."
 
+    def get_answer_info(self, problem, person, answer):
+        is_correct = any(float(response) == float(answer) for response in person.responses)
+
+        index_of_correct = [float(i) for i in person.responses].index(answer) if is_correct else len(person.responses) - 1
+        num_att_not_stored = person.num_attempts - index_of_correct - 1
+
+        return is_correct, num_att_not_stored, index_of_correct
     def set_answer(self, problem_id: str, answer: str):
         problem = self.get_problem(problem_id)
-        if not problem: return False, f"Problem {problem_id} not found."
-        result, text = problem.set_ans(answer)
+        if not problem: return False, f"Problem {problem_id} not found.", None
         people_updated = []
         if helper.parse_type(float, answer) is not None:
             for person_id, person in problem.persons.items():
-                correct_answer = any(float(response) == float(answer) for response in person.responses)
-                [people_updated.append((person_id, correct_answer)) for res, _, _ in [problem.set_grade(person_id, 1 if correct_answer else 0, False)] if res]
+                init_grade, init_attempts = float(person.grade), int(person.num_attempts)
+
+                cor1, att_nst, _ = self.get_answer_info(problem, person, int(problem.answer))
+                cor2, _, ind2 = self.get_answer_info(problem, person, int(answer))
+
+                new_grade = 1 if cor2 else 0
+                new_attempts = att_nst + ind2 + 1
+
+                problem.set_grade(person_id, new_grade, False)
+                problem.set_attempts(person_id, new_attempts)
+
+                if (new_grade != init_grade) or (new_attempts != init_attempts):
+                    people_updated.append((person_id, new_grade, new_attempts))
+
+        result, text = problem.set_ans(answer)
         return result, text, people_updated
     
     def set_time(self, problem_id: str, start_time: str, end_time: str):

@@ -960,7 +960,7 @@ async def reactstats(ctx, post_id, role_needed = None):
     return 
 
 @chain(client.command(), commands.check(is_me), wrapper_funcs)
-async def send(ctx, message, roles_to_match = "None", roles_to_exclude = "None", user_ids_to_match = "None", user_ids_to_exclude = "None", post_id = "None", additional_eval = "None"):
+async def send(ctx, message, roles_to_match = "None", roles_to_exclude = "None", user_ids_to_match = "None", user_ids_to_exclude = "None", post_id = "None"):
     '''
     Sends a message to all users that match the specified criteria.
 
@@ -971,7 +971,6 @@ async def send(ctx, message, roles_to_match = "None", roles_to_exclude = "None",
     @param user_ids_to_match (list of @s, separated by spaces, in quotes): A list of user IDs to match.
     @param user_ids_to_exclude (list of @s, separated by spaces, in quotes): A list of user IDs to exclude.
     @param post_id (int): The ID of the post to check. Send a message to everyone who has not put a reaction on the post yet.
-    @param additional_eval (str): Additional code to evaluate in the message. Use `ping` to mention the user. Access to discord user object; e.g., {user.display_name} gives the user's display name.
 
     @returns: None
     '''
@@ -984,6 +983,7 @@ async def send(ctx, message, roles_to_match = "None", roles_to_exclude = "None",
     roles_to_exclude = [int(role.id) for role in helper.parse_roles(roles_to_exclude)] if roles_to_exclude != "None" else []
     user_ids_to_match = [int(user.id) for user in helper.parse_users(user_ids_to_match)] if user_ids_to_match != "None" else []
     user_ids_to_exclude = [int(user.id) for user in helper.parse_users(user_ids_to_exclude)] if user_ids_to_exclude != "None" else []
+    post_id = helper.parse_type(int, post_id) if post_id != "None" else None
 
     users = helper.get_users(roles_to_match, roles_to_exclude, user_ids_to_match, user_ids_to_exclude)
     if post_id != None:

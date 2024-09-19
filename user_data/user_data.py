@@ -77,7 +77,8 @@ class user_data:
     def post_df(self, df):
         try:
             ws = self.SHEET.worksheet(WORKSHEET_NAME)
-        except:
+        except Exception as e:
+            print(e)
             ws = None
 
         if ws is None:

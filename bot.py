@@ -178,7 +178,9 @@ async def ud_update_gs(ctx: commands.Context) -> None:
     df = get_ud_data()
     df = df.reset_index().rename(columns={"index": "Name"})
 
+
     map_names(df, "Name")
+    print(df)
 
     if ud.post_df(df): 
         await ctx.send(f"Data updated successfully.")

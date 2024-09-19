@@ -15,7 +15,7 @@ pd.set_option('display.max_columns', None)
 pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', None)
 
-SHEET_NAME = "[Current] 2025 ARML Registration (Responses)"
+SHEET_NAME = "[Current] 2025 Oregon ARML Information Survey"
 rootDir = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/"
 
 def cs(n):

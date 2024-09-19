@@ -14,7 +14,7 @@ WORKSHEET_NAME = "User Data"
 
 class user_data:
 
-    def __init__(self):
+    def __init__(self, helper):
 
         self.client = gspread.authorize(ServiceAccountCredentials.from_json_keyfile_name(f"{DATA_DIR}gsdata/google_sheets_key.json", ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']))
 

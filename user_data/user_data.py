@@ -77,7 +77,6 @@ class user_data:
     def post_df(self, df):
         try:
             ws = self.SHEET.worksheet(WORKSHEET_NAME)
-            print(ws)
         except Exception as e:
             print(e)
             ws = None
@@ -85,10 +84,11 @@ class user_data:
         if ws is None:
             return False 
         
-        print("HERE")
         
         ws.resize(cols=len(df.columns), rows=len(df.index) + 1)
         ws.update(values=[df.columns.values.tolist()] + df.values.tolist(), range_name=None, value_input_option='USER_ENTERED')
+
+        return True 
 
     def get_df(self):
         get_as_dataframe(self.SHEET.worksheet(WORKSHEET_NAME), evaluate_formulas=False, parse_dates=False).fillna("").astype(str)

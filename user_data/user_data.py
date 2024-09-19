@@ -85,6 +85,8 @@ class user_data:
         if ws is None:
             return False 
         
+        print("HERE")
+        
         ws.resize(cols=len(df.columns), rows=len(df.index) + 1)
         ws.update(values=[df.columns.values.tolist()] + df.values.tolist(), range_name=None, value_input_option='USER_ENTERED')
 

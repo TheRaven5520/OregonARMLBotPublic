@@ -305,6 +305,7 @@ async def get_emails(ctx: commands.Context, roles_to_match = "None", roles_to_ex
     
     str_send = ""
     for em in dfstr:
+        if em == '-': continue 
         if len(str_send + em) >= 1800:
             await ctx.send(f"```{str_send}```")
             str_send = ""

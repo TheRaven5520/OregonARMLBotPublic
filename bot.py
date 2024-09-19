@@ -180,7 +180,7 @@ async def ud_update_gs(ctx: commands.Context) -> None:
 
 
     map_names(df, "Name")
-    print(df)
+    log_error(df, False)
 
     if ud.post_df(df): 
         await ctx.send(f"Data updated successfully.")

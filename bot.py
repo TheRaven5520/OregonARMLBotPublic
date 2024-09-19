@@ -793,6 +793,25 @@ async def potd_upd_grade(ctx, problem_id, person_name, new_grade, feedback=None)
 
 # POTD DATA 
 
+@chain(client.command(), commands.check(is_admin_channel), wrapper_funcs)
+async def list_constants(ctx):
+    '''[Admin only] Lists all constants.
+    
+    @returns: None'''
+    await ctx.send(f"```{constants}```")
+
+@chain(client.command(), commands.check(is_admin_channel), wrapper_funcs)
+async def update_constant(ctx, key, value):
+    '''[Admin only] Updates constant 'key' to 'value'.
+    
+    @param key (string): constant to update
+    @param value (string): value to update to
+    
+    @returns: None'''
+    global constants
+    constants[key] = value
+    await ctx.send(f"Constant {key} updated to {value}.")
+
 def potd_load_data():
     global constants
     potd_driver.load_data()

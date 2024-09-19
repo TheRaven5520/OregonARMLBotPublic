@@ -91,4 +91,4 @@ class user_data:
         return True 
 
     def get_df(self):
-        get_as_dataframe(self.SHEET.worksheet(WORKSHEET_NAME), evaluate_formulas=False, parse_dates=False).fillna("").astype(str)
+        return get_as_dataframe(self.SHEET.worksheet(WORKSHEET_NAME), evaluate_formulas=False, parse_dates=False).fillna("").astype(str)

@@ -6,7 +6,7 @@ TOKEN = os.getenv("TOKEN")
 # arml specific functionality
 from POTDfunctionality import *
 from google_sheets.googleSheetsUpdater import google_sheet_updater
-from user_data.user_data import ud
+from user_data.user_data import user_data
 
 # python functionality
 from textwrap import dedent
@@ -32,7 +32,7 @@ def check_float(x):
 MAX_ROW_PUBLIC_LEADERBOARD = 20
 my_userid = 568622241902886934
 
-potd_driver, helper, gs_helper = None, None, None
+potd_driver, helper, gs_helper, ud = None, None, None, None
 
 potd_driver = Driver()
 
@@ -180,8 +180,12 @@ async def ud_update_gs(ctx: commands.Context) -> None:
 
     map_names(df, "Name")
 
-    gs_helper.post_df_to_sheet(df, "User Data")
-    await ctx.send(f"Data updated successfully.")
+    if ud.post_df(df): 
+        await ctx.send(f"Data updated successfully.")
+        return 
+    
+    await ctx.send(f"Data failed to update.")
+
 
 @chain(client.command(), commands.check(is_administrator), wrapper_funcs)
 async def gs_update_ud(ctx: commands.Context) -> None:
@@ -192,7 +196,7 @@ async def gs_update_ud(ctx: commands.Context) -> None:
 
     @returns: None
     '''
-    gs_df = gs_helper.get_df_fromsheet("User Data")
+    gs_df = ud.get_df()
     users = helper.guild().members
     display_to_id = {user.display_name: str(user.id) for user in users}
     for _, row in gs_df.iterrows():
@@ -1229,6 +1233,7 @@ async def change_status():
 
 helper = discordHelper(client, constants["server_id"])
 gs_helper = google_sheet_updater(helper)
+ud = user_data(helper)
 
 client.run(TOKEN)
 

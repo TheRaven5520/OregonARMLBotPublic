@@ -2,11 +2,24 @@ import sys
 sys.path.append('..')
 from discordHelper import *
 
+import gspread
+from gspread_dataframe import get_as_dataframe
+from oauth2client.service_account import ServiceAccountCredentials
+
+
 # keeps track of certain data for each user
+
+SHEET_NAME = "User Data"
+WORKSHEET_NAME = "User Data"
 
 class user_data:
 
     def __init__(self):
+
+        self.client = gspread.authorize(ServiceAccountCredentials.from_json_keyfile_name(f"{DATA_DIR}gsdata/google_sheets_key.json", ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']))
+
+        self.SHEET = self.client.open(SHEET_NAME)
+        self.helper = helper
 
         self.keys = []
         self.data = {}
@@ -60,6 +73,20 @@ class user_data:
             return True
         else:
             return False
+        
+    def post_df(self, df):
+        try:
+            ws = self.SHEET.worksheet(WORKSHEET_NAME)
+        except:
+            ws = None
 
+        if ws is None:
+            return False 
+        
+        ws.resize(cols=len(df.columns), rows=len(df.index) + 1)
+        ws.update(values=[df.columns.values.tolist()] + df.values.tolist(), range_name=None, value_input_option='USER_ENTERED')
+
+    def get_df(self):
+        get_as_dataframe(self.SHEET.worksheet(WORKSHEET_NAME), evaluate_formulas=False, parse_dates=False).fillna("").astype(str)
 
 ud = user_data()

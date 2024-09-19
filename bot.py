@@ -803,7 +803,7 @@ async def list_constants(ctx):
     await ctx.send(f"```{constants}```")
 
 @chain(client.command(), commands.check(is_admin_channel), wrapper_funcs)
-async def update_constant(ctx, key, value):
+async def update_constant(ctx, key, value, is_int = False):
     '''[Admin only] Updates constant 'key' to 'value'.
     
     @param key (string): constant to update
@@ -812,6 +812,8 @@ async def update_constant(ctx, key, value):
     @returns: None'''
     global constants
     constants[key] = value
+    if is_int:
+        constants[key] = int(value)
     await ctx.send(f"Constant {key} updated to {value}.")
 
 def potd_load_data():

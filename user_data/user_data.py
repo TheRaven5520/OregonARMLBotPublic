@@ -39,6 +39,9 @@ class user_data:
     def data_as_df(self):
         return pd.DataFrame(self.data).fillna("-").astype(str).T
 
+    def get_keys(self):
+        return self.keys 
+
     # mutators
     def create_user(self, user_id):
         if user_id in self.data:

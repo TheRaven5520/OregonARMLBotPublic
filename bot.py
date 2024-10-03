@@ -137,7 +137,7 @@ def get_ud_data():
     # add _Competitor column mapping user ids --> id_to_role[user.id]
     id_to_role = {str(user.id): (1 if any(constants["year_role"] == role.id for role in user.roles) else 0) for user in helper.guild().members}
     df["Competitor_"] = df.index.map(lambda x : id_to_role.get(x, x))
-    df = df[['Competitor_'] + [col for col in df.columns if col != 'Competitor_']]
+    df = df[['Competitor_'] + ud.get_keys()]
 
     # # make display_names
     # member_ids = [member.id for member in helper.guild().members]

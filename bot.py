@@ -139,6 +139,8 @@ def get_ud_data():
     df["Competitor_"] = df.index.map(lambda x : id_to_role.get(x, x))
     df = df[['Competitor_'] + ud.get_keys()]
 
+    print(df.columns.to_list())
+
     # # make display_names
     # member_ids = [member.id for member in helper.guild().members]
     # df.index = [helper.guild().get_member(int(index)).display_name for index in df.index if int(index) in member_ids]

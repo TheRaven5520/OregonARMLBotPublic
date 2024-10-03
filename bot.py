@@ -34,7 +34,7 @@ my_userid = 568622241902886934
 
 potd_driver, helper, gs_helper, ud = None, None, None, None
 
-# potd_driver = Driver()
+potd_driver = Driver()
 
 ##################################################################################
 # SECURITY & STORAGE

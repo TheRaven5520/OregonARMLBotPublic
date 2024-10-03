@@ -205,6 +205,7 @@ async def gs_update_ud(ctx: commands.Context) -> None:
     key_order = gs_df.columns.tolist()
     key_order.remove("Competitor_")
     key_order.remove("Name")
+    ud.update_key_order(key_order)
     print(key_order)
     
     for _, row in gs_df.iterrows():

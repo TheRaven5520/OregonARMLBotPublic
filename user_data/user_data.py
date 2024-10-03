@@ -74,6 +74,12 @@ class user_data:
         else:
             return False
         
+    def update_key_order(self, keys):
+        assert set(self.keys) == set(keys)
+        self.keys = keys 
+        self.store_data()
+        return True
+
     def post_df(self, df):
         try:
             ws = self.SHEET.worksheet(WORKSHEET_NAME)

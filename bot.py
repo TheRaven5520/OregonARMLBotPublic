@@ -200,6 +200,10 @@ async def gs_update_ud(ctx: commands.Context) -> None:
     gs_df = ud.get_df()
     users = helper.guild().members
     display_to_id = {user.display_name: str(user.id) for user in users}
+    key_order = gs_df.columns.tolist()
+    key_order.remove("Competitor_")
+    key_order.remove("Name")
+    
     for _, row in gs_df.iterrows():
         id = display_to_id[row['Name']]
         for key, val in row.items():

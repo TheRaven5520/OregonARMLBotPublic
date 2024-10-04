@@ -281,7 +281,7 @@ async def ud_remove_key(ctx: commands.Context, key: str) -> None:
 @chain(client.command(), commands.check(is_administrator), wrapper_funcs)
 async def get_info(ctx: commands.Context, roles_to_match = "None", roles_to_exclude = "None", user_ids_to_match = "None", user_ids_to_exclude = "None", vals="Email_, Parent Email_, Parent Email 2_") -> None:
     '''
-    [Admin only] Retrieves the emails for users based on the provided roles and user ids.
+    [Admin only] Retrieves information for users based on the provided roles and user ids + values - default values are email, parent email, parent email 2.
 
     @param ctx (commands.Context): The context object representing the invocation context.
     @param roles_to_match (str): The roles to match.
@@ -297,7 +297,6 @@ async def get_info(ctx: commands.Context, roles_to_match = "None", roles_to_excl
     roles_to_exclude = [role.id for role in helper.parse_roles(roles_to_exclude)] if roles_to_exclude != "None" else []
     user_ids_to_match = [user.id for user in helper.parse_users(user_ids_to_match)] if user_ids_to_match != "None" else []
     user_ids_to_exclude = [user.id for user in helper.parse_users(user_ids_to_exclude)] if user_ids_to_exclude != "None" else []
-    parent = helper.parse_boolean(parent)
 
     users = [str(user.id) for user in helper.get_users(roles_to_match, roles_to_exclude, user_ids_to_match, user_ids_to_exclude)]
 

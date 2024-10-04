@@ -139,8 +139,6 @@ def get_ud_data():
     df["Competitor_"] = df.index.map(lambda x : id_to_role.get(x, x))
     df = df[['Competitor_'] + ud.get_keys()]
 
-    print(df.columns.to_list())
-
     # # make display_names
     # member_ids = [member.id for member in helper.guild().members]
     # df.index = [helper.guild().get_member(int(index)).display_name for index in df.index if int(index) in member_ids]
@@ -182,7 +180,6 @@ async def ud_update_gs(ctx: commands.Context) -> None:
 
 
     map_names(df, "Name")
-    log_error(df, False)
 
     if ud.post_df(df): 
         await ctx.send(f"Data updated successfully.")
@@ -206,7 +203,6 @@ async def gs_update_ud(ctx: commands.Context) -> None:
     key_order.remove("Competitor_")
     key_order.remove("Name")
     ud.update_key_order(key_order)
-    print(key_order)
     
     for _, row in gs_df.iterrows():
         id = display_to_id[row['Name']]
@@ -283,7 +279,7 @@ async def ud_remove_key(ctx: commands.Context, key: str) -> None:
         await ctx.send(f"Key not valid.")
 
 @chain(client.command(), commands.check(is_administrator), wrapper_funcs)
-async def get_emails(ctx: commands.Context, roles_to_match = "None", roles_to_exclude = "None", user_ids_to_match = "None", user_ids_to_exclude = "None", parent="False") -> None:
+async def get_info(ctx: commands.Context, roles_to_match = "None", roles_to_exclude = "None", user_ids_to_match = "None", user_ids_to_exclude = "None", vals="Email_, Parent Email_, Parent Email 2_") -> None:
     '''
     [Admin only] Retrieves the emails for users based on the provided roles and user ids.
 
@@ -305,9 +301,10 @@ async def get_emails(ctx: commands.Context, roles_to_match = "None", roles_to_ex
 
     users = [str(user.id) for user in helper.get_users(roles_to_match, roles_to_exclude, user_ids_to_match, user_ids_to_exclude)]
 
-    emails_to_get = ["Email_"] + ([] if not parent else ["Parent Email_", "Parent Email 2_"])
+    vals_to_get = vals.split(',').map(lambda x: x.strip(' '))
+
     df = get_ud_data()
-    df = df.loc[df.index.isin(users), emails_to_get]
+    df = df.loc[df.index.isin(users), vals_to_get]
     dfstr = set(map(str, df.values.flatten()))
     
     str_send = ""

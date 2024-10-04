@@ -300,7 +300,7 @@ async def get_info(ctx: commands.Context, roles_to_match = "None", roles_to_excl
 
     users = [str(user.id) for user in helper.get_users(roles_to_match, roles_to_exclude, user_ids_to_match, user_ids_to_exclude)]
 
-    vals_to_get = vals.split(',').map(lambda x: x.strip(' '))
+    vals_to_get = [i.strip() for i in vals.split(',')]
 
     df = get_ud_data()
     df = df.loc[df.index.isin(users), vals_to_get]

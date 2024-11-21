@@ -307,6 +307,8 @@ async def get_info(ctx: commands.Context, roles_to_match = "None", roles_to_excl
     print(df.columns)
     dfstr = set(map(str, df.values.flatten()))
     
+    print(dfstr)
+
     str_send = ""
     for em in dfstr:
         if em == '-': continue 

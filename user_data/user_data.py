@@ -78,7 +78,13 @@ class user_data:
             return False
         
     def update_key_order(self, keys):
-        assert set(self.keys) == set(keys)
+        try:
+            set(self.keys) == set(keys)
+        except Exception as e:
+            print(self.keys, keys)
+            log_error(e)
+            return False
+
         self.keys = keys 
         self.store_data()
         return True

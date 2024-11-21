@@ -80,6 +80,7 @@ class google_sheet_updater:
 
     def store_display(self, sheet_name):
         ws, df = self.get_ws(sheet_name)
+        if ws is None or df is None: return
         new_df = self.get_df_fromsheet(sheet_name)
 
         # change display names to user IDs where possible

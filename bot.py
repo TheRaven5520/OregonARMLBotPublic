@@ -304,10 +304,8 @@ async def get_info(ctx: commands.Context, roles_to_match = "None", roles_to_excl
 
     df = get_ud_data()
     df = df.loc[df.index.isin(users), vals_to_get]
-    print(df.columns)
     dfstr = set(map(str, df.values.flatten()))
     
-    print(dfstr)
 
     str_send = ""
     for em in dfstr:

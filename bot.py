@@ -313,7 +313,7 @@ async def get_info(ctx: commands.Context, roles_to_match = "None", roles_to_excl
         if len(str_send + em) >= 1800:
             await ctx.send(f"```{str_send}```")
             str_send = ""
-        str_send += em + ','
+        str_send += em + ', '
     if str_send != "":
         await ctx.send(f"```{str_send}```")
 

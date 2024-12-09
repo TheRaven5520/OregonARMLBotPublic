@@ -17,7 +17,7 @@ client = commands.Bot(command_prefix='-', intents=intents)
 ######################################## CONSTANTS
 
 # data dir is parent_dir/PrivateData/
-DATA_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/PrivateData/"
+DATA_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/OregonARMLBotPrivate/"
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 timezone = 'America/Los_Angeles'

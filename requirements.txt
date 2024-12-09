@@ -1,0 +1,6 @@
+python-dotenv
+pandas
+discord
+gspread
+gspread_dataframe
+oauth2client

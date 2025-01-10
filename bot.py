@@ -924,13 +924,31 @@ async def check_scheduled_messages():
             raise Exception(e)
         potd_driver.scheduled_messages.pop(i)
     store_data()
+
+@chain(client.command(), commands.check(is_me), wrapper_funcs)
+async def start_sched(ctx):
+    global constants
+    scheduled_messages = [(i, j) for i, j in potd_driver.scheduled_messages.items() if pd.Timestamp(j["time"], tz=timezone) <= pd.Timestamp.now(tz=timezone)]
+    for i, j in scheduled_messages:
+        print(i, j)
+        try:
+            if not j["text"]: j["text"] = ""
+            channel = client.get_guild(constants["server_id"]).get_channel(int(j["channel"]))
+            file = discord.File(f"{DATA_DIR}images/{j['filename']}") if j["filename"] else None
+            await channel.send(content=j["text"], file=file)
+            if j['filename']: os.remove(f"{DATA_DIR}images/{j['filename']}")
+        except Exception as e:
+            channel = helper.get_channel(constants["admin_channel"])
+            await channel.send(f"Error sending scheduled message.")
+            raise Exception(e)
+        potd_driver.scheduled_messages.pop(i)
+    store_data()
     
 @check_scheduled_messages.before_loop
 async def before_check_scheduled_messages():
-    # current_time = datetime.datetime.now()
-    # seconds_until_next_interval = 60 - current_time.second
-    # await asyncio.sleep(seconds_until_next_interval)
-    return 
+    current_time = datetime.datetime.now()
+    seconds_until_next_interval = 60 - current_time.second
+    await asyncio.sleep(seconds_until_next_interval)
 
 ##################################################################################
 # STATISTICS & COMMUNICATION

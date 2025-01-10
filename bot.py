@@ -927,9 +927,10 @@ async def check_scheduled_messages():
     
 @check_scheduled_messages.before_loop
 async def before_check_scheduled_messages():
-    current_time = datetime.datetime.now()
-    seconds_until_next_interval = 60 - current_time.second
-    await asyncio.sleep(seconds_until_next_interval)
+    # current_time = datetime.datetime.now()
+    # seconds_until_next_interval = 60 - current_time.second
+    # await asyncio.sleep(seconds_until_next_interval)
+    return 
 
 ##################################################################################
 # STATISTICS & COMMUNICATION

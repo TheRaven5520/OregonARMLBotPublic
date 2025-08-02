@@ -911,8 +911,28 @@ async def check_scheduled_messages():
     global constants
     scheduled_messages = [(i, j) for i, j in potd_driver.scheduled_messages.items() if pd.Timestamp(j["time"], tz=timezone) <= pd.Timestamp.now(tz=timezone)]
     for i, j in scheduled_messages:
+        print(i, j)
         try:
-            if not j["text"]: j["text"] = "​"
+            if not j["text"]: j["text"] = ""
+            channel = client.get_guild(constants["server_id"]).get_channel(int(j["channel"]))
+            file = discord.File(f"{DATA_DIR}images/{j['filename']}") if j["filename"] else None
+            await channel.send(content=j["text"], file=file)
+            if j['filename']: os.remove(f"{DATA_DIR}images/{j['filename']}")
+        except Exception as e:
+            channel = helper.get_channel(constants["admin_channel"])
+            await channel.send(f"Error sending scheduled message.")
+            raise Exception(e)
+        potd_driver.scheduled_messages.pop(i)
+    store_data()
+
+@chain(client.command(), commands.check(is_me), wrapper_funcs)
+async def start_sched(ctx):
+    global constants
+    scheduled_messages = [(i, j) for i, j in potd_driver.scheduled_messages.items() if pd.Timestamp(j["time"], tz=timezone) <= pd.Timestamp.now(tz=timezone)]
+    for i, j in scheduled_messages:
+        print(i, j)
+        try:
+            if not j["text"]: j["text"] = ""
             channel = client.get_guild(constants["server_id"]).get_channel(int(j["channel"]))
             file = discord.File(f"{DATA_DIR}images/{j['filename']}") if j["filename"] else None
             await channel.send(content=j["text"], file=file)
